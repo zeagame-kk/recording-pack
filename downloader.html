@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🎬 Packing Video Downloader (v0.3.0)</title>
-    <!-- FFmpeg v0.12 Single-Threaded (No SharedArrayBuffer needed) -->
-    <script src="lib/v12/ffmpeg.js"></script>
+    <title>🎬 Packing Video Downloader (v0.4.0)</title>
+
+    <!-- Native WebM playback (No FFmpeg needed) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -222,7 +222,7 @@
 <body>
 
 <div class="header">
-    <h1>🎬 Packing Video Downloader <span style="font-size: 0.8rem; color: var(--accent);">v0.3.0</span></h1>
+    <h1>🎬 Packing Video Downloader <span style="font-size: 0.8rem; color: var(--accent);">v0.4.0</span></h1>
     <p>ค้นหาและดาวน์โหลดวิดีโอการแพ็คสินค้าเป็นไฟล์ MP4</p>
 </div>
 
@@ -272,23 +272,6 @@
             </div>
         </div>
 
-        <div class="step" id="step-ffmpeg">
-            <div class="step-icon">⚙️</div>
-            <div class="step-content">
-                <div class="step-title">โหลดตัวแปลงไฟล์ (ครั้งแรกใช้เวลาสักครู่)</div>
-                <div class="step-desc" id="step-ffmpeg-desc">รอขั้นตอนก่อนหน้า...</div>
-            </div>
-        </div>
-        <div class="step" id="step-convert">
-            <div class="step-icon">🎬</div>
-            <div class="step-content">
-                <div class="step-title">แปลงไฟล์เป็น MP4 (สำหรับส่ง LINE)</div>
-                <div class="step-desc" id="step-convert-desc">รอขั้นตอนก่อนหน้า...</div>
-                <div class="progress-bar-wrap" id="conv-progress-wrap" style="display:none">
-                    <div class="progress-bar-fill" id="conv-progress-bar" style="width:0%; background: var(--success);"></div>
-                </div>
-            </div>
-        </div>
         <div class="step" id="step-ready">
             <div class="step-icon">✅</div>
             <div class="step-content">
@@ -305,12 +288,12 @@
 
     <!-- Download Button -->
     <button id="download-btn" class="download-btn hidden" onclick="triggerDownload()">
-        ⬇️ ดาวน์โหลดวิดีโอ (.mp4)
+        ⬇️ ดาวน์โหลดวิดีโอ (.webm)
     </button>
 </div>
 
 <div class="footer">
-    Packing Recorder Lite — v0.3.0 &nbsp;|&nbsp;
+    Packing Recorder Lite — v0.4.0 &nbsp;|&nbsp;
     วิดีโอถูกแปลงในเบราว์เซอร์ของคุณ ไม่มีข้อมูลส่งออกไปภายนอก<br>
     <small>ต้องใช้ Google Account ที่มีสิทธิ์เข้าถึง Shared Drive ของบริษัทครับ</small>
 </div>
@@ -333,8 +316,6 @@ const DEFAULT_CLIENT_ID = '277747309803-jvqfskqkehph1mmnamjbdh04vuagbj4m.apps.go
 // ============================================================
 let accessToken = null;
 let tokenClient = null;
-let ffmpegInstance = null;
-let ffmpegLoadPromise = null;
 let outputBlob = null;
 let outputFileName = '';
 let isBusy = false;
@@ -423,11 +404,6 @@ function setConvProgress(pct) {
     document.getElementById('conv-progress-bar').style.width = pct + '%';
 }
 
-function setConvProgress(pct) {
-    document.getElementById('conv-progress-wrap').style.display = 'block';
-    document.getElementById('conv-progress-bar').style.width = pct + '%';
-}
-
 // ============================================================
 //  MAIN FLOW
 // ============================================================
@@ -450,7 +426,7 @@ async function startDownload() {
     document.getElementById('download-btn').classList.add('hidden');
 
     // Reset all steps
-    ['step-auth','step-search','step-download','step-ffmpeg','step-convert','step-ready'].forEach(id => {
+    ['step-auth','step-search','step-download','step-ready'].forEach(id => {
         const el = document.getElementById(id);
         el.className = 'step';
         const existing = el.querySelector('.step-spinner');
@@ -473,20 +449,9 @@ async function startDownload() {
         const webmBuffer = await downloadFile(file.id, file.size);
         setStep('step-download', 'done', `ดาวน์โหลดสำเร็จ (${formatBytes(webmBuffer.byteLength)})`);
 
-        // ── STEP 3: Load FFmpeg ───────────────────────────
-        setStep('step-ffmpeg', 'active', 'กำลังโหลดเครื่องมือแปลงไฟล์... (อาจใช้เวลา 10-30 วินาที)');
-        await loadFFmpeg();
-        setStep('step-ffmpeg', 'done', 'โหลดเครื่องมือสำเร็จ');
-
-        // ── STEP 4: Convert ───────────────────────────────
-        const mp4Name = file.name.replace(/\.webm$/, '.mp4');
-        setStep('step-convert', 'active', `กำลังแปลงไฟล์เป็น MP4...`);
-        const mp4Buffer = await convertToMp4(webmBuffer, file.name, mp4Name);
-        setStep('step-convert', 'done', `แปลงไฟล์สำเร็จ! ขนาดไฟล์: ${formatBytes(mp4Buffer.byteLength)}`);
-
-        // ── STEP 5: Ready ─────────────────────────────────
-        outputBlob = new Blob([mp4Buffer], { type: 'video/mp4' });
-        outputFileName = mp4Name;
+        // ── STEP 3: Ready ─────────────────────────────────
+        outputBlob = new Blob([webmBuffer], { type: 'video/webm' });
+        outputFileName = file.name;
         setStep('step-ready', 'done', `พร้อมใช้งาน "${outputFileName}"`);
 
         // Load into player
@@ -565,54 +530,6 @@ async function downloadFile(fileId, totalSize) {
     let offset = 0;
     for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.length; }
     return buffer.buffer;
-}
-
-// ============================================================
-//  FFMPEG v0.12 (Local, Single-Threaded)
-// ============================================================
-async function _doLoadFFmpeg() {
-    const { FFmpeg } = FFmpegWASM;
-    ffmpegInstance = new FFmpeg();
-
-    ffmpegInstance.on('progress', ({ progress }) => {
-        const pct = Math.min(99, Math.round(progress * 100));
-        setConvProgress(pct);
-        document.getElementById('step-convert-desc').textContent = `กำลังแปลง... ${pct}%`;
-    });
-
-    await ffmpegInstance.load({
-        coreURL: 'lib/v12/ffmpeg-core.js',
-        wasmURL: 'lib/v12/ffmpeg-core.wasm'
-    });
-}
-
-function loadFFmpeg() {
-    if (!ffmpegLoadPromise) {
-        ffmpegLoadPromise = _doLoadFFmpeg();
-    }
-    return ffmpegLoadPromise;
-}
-
-async function convertToMp4(inputBuffer, inputName, outputName) {
-    await ffmpegInstance.writeFile(inputName, new Uint8Array(inputBuffer));
-
-    await ffmpegInstance.exec([
-        '-i', inputName,
-        '-c:v', 'libx264',
-        '-preset', 'fast',
-        '-crf', '23',
-        '-an',
-        '-movflags', '+faststart',
-        outputName
-    ]);
-
-    const data = await ffmpegInstance.readFile(outputName);
-    setConvProgress(100);
-
-    try { await ffmpegInstance.deleteFile(inputName); } catch {}
-    try { await ffmpegInstance.deleteFile(outputName); } catch {}
-
-    return data instanceof Uint8Array ? data.buffer : data;
 }
 
 // ============================================================
