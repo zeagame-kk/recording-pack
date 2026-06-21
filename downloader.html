@@ -5,8 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎬 Packing Video Downloader</title>
 
-    <!-- Required for FFmpeg.wasm to work on GitHub Pages (adds COOP/COEP headers via ServiceWorker) -->
-    <script src="coi-serviceworker.js"></script>
+    <!-- No coi-serviceworker needed — using FFmpeg.wasm v0.12 single-threaded core (no SharedArrayBuffer) -->
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -538,47 +537,69 @@ async function downloadFile(fileId, totalSize) {
 }
 
 // ============================================================
-//  FFMPEG
+//  FFMPEG v0.12 — Single-threaded core (no SharedArrayBuffer)
 // ============================================================
+
+// Convert a cross-origin URL to a local Blob URL (bypass CORS for wasm)
+async function toBlobURL(url, mimeType) {
+    const resp = await fetch(url);
+    const buf  = await resp.arrayBuffer();
+    return URL.createObjectURL(new Blob([buf], { type: mimeType }));
+}
+
 async function loadFFmpeg() {
-    if (ffmpegInstance && ffmpegInstance.isLoaded()) return;
-    const { createFFmpeg } = FFmpeg;
-    ffmpegInstance = createFFmpeg({
-        log: false,
-        progress: ({ ratio }) => {
-            const pct = Math.round(ratio * 100);
-            setConvProgress(pct);
-            document.getElementById('step-convert-desc').textContent =
-                `กำลังแปลง... ${pct}%`;
-        }
+    if (ffmpegInstance) return;
+
+    // Dynamically load @ffmpeg/ffmpeg v0.12 UMD
+    await new Promise((res, rej) => {
+        const s = document.createElement('script');
+        s.src = 'https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+        s.onload = res;
+        s.onerror = rej;
+        document.head.appendChild(s);
     });
-    await ffmpegInstance.load();
+
+    const { FFmpeg } = FFmpegWASM;
+    ffmpegInstance = new FFmpeg();
+
+    ffmpegInstance.on('progress', ({ progress }) => {
+        const pct = Math.min(99, Math.round(progress * 100));
+        setConvProgress(pct);
+        document.getElementById('step-convert-desc').textContent =
+            `กำลังแปลง... ${pct}%`;
+    });
+
+    // Load single-threaded core from unpkg (no SharedArrayBuffer needed)
+    const BASE = 'https://unpkg.com/@ffmpeg/core-st@0.12.4/dist/umd';
+    await ffmpegInstance.load({
+        coreURL : await toBlobURL(`${BASE}/ffmpeg-core.js`,   'text/javascript'),
+        wasmURL : await toBlobURL(`${BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+    });
 }
 
 async function convertToMp4(inputBuffer, inputName, outputName) {
-    const { fetchFile } = FFmpeg;
+    // Write input
+    await ffmpegInstance.writeFile(inputName, new Uint8Array(inputBuffer));
 
-    // Write input file to FFmpeg virtual FS
-    ffmpegInstance.FS('writeFile', inputName, new Uint8Array(inputBuffer));
-
-    // Convert: WebM (VP8/VP9, no audio) → MP4 (H.264)
-    await ffmpegInstance.run(
+    // Convert: WebM VP8/VP9 → MP4 H.264 (no audio)
+    await ffmpegInstance.exec([
         '-i', inputName,
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '23',
-        '-an',           // No audio track
+        '-an',
         '-movflags', '+faststart',
         outputName
-    );
+    ]);
 
-    const data = ffmpegInstance.FS('readFile', outputName);
+    const data = await ffmpegInstance.readFile(outputName);
+    setConvProgress(100);
 
     // Cleanup
-    try { ffmpegInstance.FS('unlink', inputName); } catch {}
-    try { ffmpegInstance.FS('unlink', outputName); } catch {}
+    try { await ffmpegInstance.deleteFile(inputName); } catch {}
+    try { await ffmpegInstance.deleteFile(outputName); } catch {}
 
-    return data.buffer;
+    return data instanceof Uint8Array ? data.buffer : data;
 }
 
 // ============================================================
@@ -593,6 +614,7 @@ function formatBytes(bytes) {
 // ============================================================
 //  BOOT
 // ============================================================
+// (No FFmpeg v0.11 global script needed — loaded dynamically in loadFFmpeg())
 initAuth();
 </script>
 </body>
