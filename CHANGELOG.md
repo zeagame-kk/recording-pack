@@ -2,6 +2,11 @@
 
 บันทึกการเปลี่ยนแปลงของระบบ Packing Recorder Lite
 
+## [v0.5.1] - 2026-06-21
+### Fixed
+- **Shared Drive Support**: เพิ่มพารามิเตอร์ `corpora=allDrives`, `includeItemsFromAllDrives=true` และ `supportsAllDrives=true` ในการเชื่อมต่อ Google Drive API ทั้งใน `index.html` และ `downloader.html` เพื่อแก้ปัญหาการค้นหาวิดีโอไม่พบบน Shared Drive ของอีเมลบัญชีอื่น (เช่น `natnicha.rs1944@gmail.com`)
+- **Cache Busting**: อัปเดตเวอร์ชันบนหน้าเว็บเป็น `v0.5.1` เพื่อป้องกันเบราว์เซอร์ (โดยเฉพาะ Safari บนมือถือ) จำไฟล์เวอร์ชันเก่า
+
 ## [v0.5.0] - 2026-06-21
 ### Added
 - เพิ่มฟังก์ชัน **Auto Cleanup History** ลบประวัติการแพ็คสินค้าเก่าที่เกิน 3 วันออกอัตโนมัติเมื่อเปิดหน้าเว็บ (เพื่อป้องกันปัญหาข้อมูลรกและบราวเซอร์หนักเกินไป)

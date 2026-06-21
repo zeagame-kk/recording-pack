@@ -1,14 +1,15 @@
 # 📦 Packing Recorder Lite
 
-Web App สำหรับบันทึกวิดีโอตอนแพ็คสินค้า เพื่อเป็นหลักฐานย้อนหลัง โดยไม่ต้องลงโปรแกรมหนักๆ ทำงานผ่าน Google Chrome
+Web App สำหรับบันทึกวิดีโอตอนแพ็คสินค้า เพื่อเป็นหลักฐานย้อนหลัง โดยไม่ต้องลงโปรแกรมหนักๆ ทำงานผ่าน Google Chrome และค้นหา/ดาวน์โหลดไฟล์ผ่านแดชบอร์ด
 
 ## ✨ ฟีเจอร์
 
-- 📷 บันทึกวิดีโอจาก Webcam (1280x720)
-- 📝 ใส่เลข Order Number (ยิง Barcode ได้)
-- 🎬 ฝังเลข Order และเวลาปัจจุบันลงในวิดีโอ (Overlay)
+- 📷 บันทึกวิดีโอจาก Webcam (720p @ 15fps)
+- 📝 ใส่เลข Order Number (ยิง Barcode ค้นหา/บันทึกอัตโนมัติ)
+- 🎬 ฝังเลข Order และเวลาปัจจุบันลงในวิดีโอโดยตรง (Canvas Overlay)
 - ☁️ อัปโหลดวิดีโอขึ้น Google Shared Drive อัตโนมัติ พร้อมจัดเรียงตามโฟลเดอร์ วัน/เดือน/ปี
-- 🗄 ค้นหาและดูประวัติย้อนหลังได้จากในตัวแอป (ข้อมูลเก็บใน IndexedDB ของเบราว์เซอร์)
+- 🗄 ระบบประวัติการแพ็คในเครื่อง (IndexedDB) พร้อมระบบล้างข้อมูลเก่าอัตโนมัติเมื่อครบ 3 วัน
+- 📊 **Dashboard & Downloader**: ค้นหาวิดีโอผ่านรหัส Order หรือวันที่ พร้อมแสดงกราฟสถิติจำนวนกล่องรายชั่วโมง
 
 ## 🚀 วิธีใช้งานเบื้องต้น
 
@@ -20,27 +21,17 @@ Web App สำหรับบันทึกวิดีโอตอนแพ็
    # หรือหากมี Node.js
    npx http-server . -p 8000
    ```
-2. เปิดเบราว์เซอร์ Google Chrome ไปที่ `http://localhost:8000`
-3. เบราว์เซอร์จะขออนุญาตใช้งานกล้อง (Camera Permission) ให้กด **Allow**
-4. คลิก **Sign In to Google** เพื่อให้แอปมีสิทธิ์อัปโหลดไฟล์ขึ้น Google Drive
-5. กรอกหรือยิง Barcode รหัส `Order Number`
-6. กดปุ่ม **Start Recording** และเริ่มแพ็คสินค้า
-7. แพ็คเสร็จให้กด **Stop Recording**
-8. ระบบจะอัปโหลดวิดีโอขึ้น Google Drive ให้อัตโนมัติ พร้อมขึ้นประวัติในแถบด้านขวา
+2. หรือเข้าใช้งานผ่าน **GitHub Pages** ที่ตั้งค่าไว้แล้ว
+3. เปิดเบราว์เซอร์ Google Chrome ไปที่:
+   - **บันทึกวิดีโอ**: `http://localhost:8000/index.html` (หรือหน้าหลัก)
+   - **ดาวน์โหลดและดูสถิติ**: `http://localhost:8000/downloader.html`
+4. คลิก **Sign In to Google** เพื่อเข้าสู่ระบบ Google Drive (รองรับ Shared Drive)
+5. กรอกหรือยิง Barcode รหัส `Order Number` เพื่อเริ่มบันทึก และหยุดบันทึกเมื่อเสร็จสิ้นเพื่ออัปโหลดทันที
 
 ## ⚙️ การตั้งค่า Google Drive API
 
-แอปพลิเคชันนี้ต้องใช้ **Google Client ID** สำหรับอัปโหลดไฟล์
-กรุณานำ Client ID ของคุณมาใส่ในไฟล์ `src/drive.js`:
-
-```javascript
-// ในไฟล์ src/drive.js
-const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID_HERE'; 
-```
-
-**โฟลเดอร์ปลายทาง (Root Folder):**
-ตั้งค่าไว้ที่ Shared Folder `PackingRecorder`
-(Folder ID: `1uKbeRbBONdq1aFMwIs94yfd4WXwG_fCj`)
+- **Client ID**: สามารถแก้ไขได้ผ่านหน้าต่างการตั้งค่า (Settings Modal) ในหน้า `index.html` หรือแก้ไขค่าเริ่มต้นในไฟล์ HTML
+- **โฟลเดอร์ปลายทาง (Root Folder)**: ตั้งค่าโฟลเดอร์หลักบน Google Shared Drive ที่ ID `1uKbeRbBONdq1aFMwIs94yfd4WXwG_fCj`
 
 ---
-*พัฒนาเพื่อใช้งานชั่วคราว (Phase 0) ก่อนย้ายระบบไปใช้ BigSeller แบบเต็มรูปแบบ*
+*พัฒนาเพื่อใช้งานในระบบบันทึกวิดีโอแพ็คสินค้าของบริษัท*
