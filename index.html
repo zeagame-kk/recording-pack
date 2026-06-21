@@ -767,7 +767,7 @@ function showUpload(type, msg) {
 // ============================================================
 async function driveQuery(q) {
     const resp = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`,
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive&includeItemsFromAllDrives=true&supportsAllDrives=true`,
         { headers: { Authorization: 'Bearer ' + accessToken } }
     );
     const data = await resp.json();
@@ -775,7 +775,7 @@ async function driveQuery(q) {
 }
 
 async function createFolder(name, parentId) {
-    const resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
@@ -809,7 +809,7 @@ async function uploadToDrive(blob, fileName, folderId) {
     form.append('file', blob);
 
     const resp = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true',
         { method: 'POST', headers: { Authorization: 'Bearer ' + accessToken }, body: form }
     );
     if (!resp.ok) {
