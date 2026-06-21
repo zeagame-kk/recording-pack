@@ -1,0 +1,1 @@
+Failed to fetch gzuidhof/coi-serviceworker@0.1.7 from GitHub.
