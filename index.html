@@ -556,7 +556,9 @@ function saveSettings() {
 }
 
 // ============================================================
-//  CANVAS / OVERLAY
+//  CANVAS / OVERLAY (ส่วนจัดการภาพจากกล้องและวาดลายน้ำ)
+//  - ทำหน้าที่ดึงภาพจากกล้องมาแสดงผล
+//  - นำข้อความ Order และ วันเวลา มาวาดทับลงบนวิดีโอ (Burn-in)
 // ============================================================
 const rawVideo = document.getElementById('raw-video');
 const canvas = document.getElementById('preview-canvas');
@@ -604,7 +606,9 @@ function drawOverlay() {
 }
 
 // ============================================================
-//  RECORDING
+//  RECORDING (ส่วนควบคุมการเริ่มและหยุดบันทึกวิดีโอ)
+//  - เริ่มอัดวิดีโอเมื่อกดปุ่มหรือกด Enter ที่ช่อง Order
+//  - จับเวลาการแพ็ค และสั่งหยุดเมื่อเสร็จสิ้น
 // ============================================================
 const orderInput = document.getElementById('order-input');
 const startBtn   = document.getElementById('start-btn');
@@ -694,7 +698,10 @@ function stopRecording() {
 }
 
 // ============================================================
-//  FINALIZE & UPLOAD
+//  FINALIZE & UPLOAD (ส่วนรวบรวมไฟล์และอัปโหลด)
+//  - นำไฟล์วิดีโอที่แพ็คเสร็จมาเตรียมเป็นก้อน (Blob)
+//  - บันทึกลงฐานข้อมูล History ในเครื่อง (IndexedDB)
+//  - ส่งไฟล์ไปเก็บที่ Google Drive แบบอัตโนมัติ
 // ============================================================
 async function finalize(orderNo) {
     const durationSec = Math.floor((Date.now() - startTime) / 1000);
@@ -813,7 +820,9 @@ async function uploadToDrive(blob, fileName, folderId) {
 }
 
 // ============================================================
-//  HISTORY
+//  HISTORY & DB (IndexedDB) (ส่วนฐานข้อมูลในเครื่องพนักงาน)
+//  - เก็บประวัติว่าแพ็คออเดอร์ไหนไปแล้วบ้าง
+//  - มีระบบลบประวัติเก่าเกิน 3 วันอัตโนมัติ (Cleanup)
 // ============================================================
 async function renderHistory(query = '') {
     const all = await dbGetAll();

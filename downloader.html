@@ -444,7 +444,9 @@ function setConvProgress(pct) {
 }
 
 // ============================================================
-//  MAIN FLOW
+//  MAIN FLOW (ระบบค้นหาและดึงวิดีโอด้วย Order Number)
+//  - จะค้นหาไฟล์วิดีโอบน Google Drive ที่มีชื่อตรงกับเลข Order
+//  - แล้วทำการดาวน์โหลด/สตรีมมาเล่นบนหน้าเว็บทันที
 // ============================================================
 async function startDownload() {
     const orderNo = document.getElementById('order-input').value.trim();
@@ -525,7 +527,9 @@ function triggerDownload() {
 }
 
 // ============================================================
-//  DAILY FETCH FLOW
+//  DAILY FETCH FLOW (ระบบดึงข้อมูลรายวันและสร้างกราฟ)
+//  - ค้นหาวิดีโอทั้งหมดในวันที่ระบุ (ใช้ Prefix ของชื่อไฟล์)
+//  - นับจำนวนออเดอร์รายชั่วโมง แล้ววาดกราฟเส้น (Chart.js)
 // ============================================================
 let chartInstance = null;
 
@@ -623,7 +627,9 @@ async function startDailyFetch() {
 }
 
 // ============================================================
-//  GOOGLE DRIVE
+//  GOOGLE DRIVE (ระบบคุยกับ API ของ Google Drive)
+//  - มีฟังก์ชันค้นหาไฟล์ด้วยคำสั่งของ Google Drive
+//  - มีฟังก์ชันสตรีมไฟล์ก้อนใหญ่ (Chunk download)
 // ============================================================
 async function searchDriveForDate(prefix) {
     const safePrefix = prefix.replace(/'/g, "\\'");
