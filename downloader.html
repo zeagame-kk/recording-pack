@@ -5,9 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🎬 Packing Video Downloader</title>
 
-    <!-- Required for FFmpeg v0.11 SharedArrayBuffer -->
-    <script src="coi-serviceworker.js"></script>
-    <script src="lib/ffmpeg.min.js"></script>
+    <!-- FFmpeg v0.12 Single-Threaded does NOT need SharedArrayBuffer or coi-serviceworker -->
+    <script src="lib/v12/ffmpeg.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -539,24 +538,31 @@ async function downloadFile(fileId, totalSize) {
 }
 
 // ============================================================
-//  FFMPEG v0.11 (Local Files)
+//  FFMPEG v0.12 (Local, Single-Threaded, No SharedArrayBuffer)
 // ============================================================
-
 async function _doLoadFFmpeg() {
-    document.getElementById('step-ffmpeg-desc').textContent = 'โหลด FFmpeg core (Local)...';
-    const { createFFmpeg } = FFmpeg;
+    document.getElementById('step-ffmpeg-desc').textContent = 'โหลด FFmpeg core v12 (Local)...';
 
-    ffmpegInstance = createFFmpeg({
-        corePath: 'lib/ffmpeg-core.js', // Use local core file!
-        log: false,
-        progress: ({ ratio }) => {
-            const pct = Math.min(99, Math.round(ratio * 100));
-            setConvProgress(pct);
-            document.getElementById('step-convert-desc').textContent = `กำลังแปลง... ${pct}%`;
-        }
+    const { FFmpeg } = FFmpegWASM;
+    ffmpegInstance = new FFmpeg();
+
+    ffmpegInstance.on('progress', ({ progress }) => {
+        const pct = Math.min(99, Math.round(progress * 100));
+        setConvProgress(pct);
+        document.getElementById('step-convert-desc').textContent = `กำลังแปลง... ${pct}%`;
     });
 
-    await ffmpegInstance.load();
+    ffmpegInstance.on('log', ({ message }) => console.log('[ffmpeg]', message));
+
+    document.getElementById('step-ffmpeg-desc').textContent = 'Initializing FFmpeg v12...';
+    
+    // Use local v0.12 files. 
+    // toBlobURL is only needed to bypass CORS from unpkg, 
+    // since we serve locally on the same origin, we can pass paths directly!
+    await ffmpegInstance.load({
+        coreURL: 'lib/v12/ffmpeg-core.js',
+        wasmURL: 'lib/v12/ffmpeg-core.wasm'
+    });
 }
 
 // Public wrapper — ensures load is only called once, awaitable by multiple callers
@@ -568,13 +574,9 @@ function loadFFmpeg() {
 }
 
 async function convertToMp4(inputBuffer, inputName, outputName) {
-    const { fetchFile } = FFmpeg;
+    await ffmpegInstance.writeFile(inputName, new Uint8Array(inputBuffer));
 
-    // Write input file
-    ffmpegInstance.FS('writeFile', inputName, new Uint8Array(inputBuffer));
-
-    // Convert
-    await ffmpegInstance.run(
+    await ffmpegInstance.exec([
         '-i', inputName,
         '-c:v', 'libx264',
         '-preset', 'fast',
@@ -582,16 +584,15 @@ async function convertToMp4(inputBuffer, inputName, outputName) {
         '-an',
         '-movflags', '+faststart',
         outputName
-    );
+    ]);
 
-    const data = ffmpegInstance.FS('readFile', outputName);
+    const data = await ffmpegInstance.readFile(outputName);
     setConvProgress(100);
 
-    // Cleanup
-    try { ffmpegInstance.FS('unlink', inputName); } catch {}
-    try { ffmpegInstance.FS('unlink', outputName); } catch {}
+    try { await ffmpegInstance.deleteFile(inputName); } catch {}
+    try { await ffmpegInstance.deleteFile(outputName); } catch {}
 
-    return data.buffer;
+    return data instanceof Uint8Array ? data.buffer : data;
 }
 
 // ============================================================
