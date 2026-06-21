@@ -1,0 +1,16 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# Old modular source files (not used — everything is now in index.html)
+src/
+
+# Internal project report (not needed on GitHub)
+packing_recorder_lite_report.md
+
+# Node / dev tools
+node_modules/
+npm-debug.log*
