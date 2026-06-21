@@ -644,6 +644,7 @@ async function searchDriveForDate(prefix) {
         url.searchParams.append('fields', 'nextPageToken, files(id,name,size,createdTime)');
         url.searchParams.append('spaces', 'drive');
         url.searchParams.append('pageSize', '1000');
+        url.searchParams.append('corpora', 'allDrives');
         url.searchParams.append('includeItemsFromAllDrives', 'true');
         url.searchParams.append('supportsAllDrives', 'true');
         if (pageToken) url.searchParams.append('pageToken', pageToken);
@@ -667,7 +668,7 @@ async function searchDriveForOrder(orderNo) {
     const safeOrder = orderNo.replace(/'/g, "\\'");
     const q = `name contains '${safeOrder}' and mimeType != 'application/vnd.google-apps.folder' and trashed = false`;
     const resp = await fetch(
-        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,size)&spaces=drive&pageSize=10&includeItemsFromAllDrives=true&supportsAllDrives=true`,
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,size)&spaces=drive&pageSize=10&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true`,
         { headers: { Authorization: 'Bearer ' + accessToken } }
     );
     const data = await resp.json();
