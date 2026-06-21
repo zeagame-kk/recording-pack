@@ -7,6 +7,7 @@
 
     <!-- Native WebM playback (No FFmpeg needed) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg: #0f172a;
@@ -41,14 +42,24 @@
         .header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
         .header p { color: var(--text2); font-size: 0.9rem; }
 
-        /* Card */
+        /* Card Layout */
+        .container {
+            display: flex;
+            gap: 2rem;
+            width: 100%;
+            max-width: 1000px;
+            align-items: flex-start;
+        }
         .card {
             background: var(--surface);
             border-radius: 16px;
             padding: 2rem;
             width: 100%;
-            max-width: 560px;
             box-shadow: 0 20px 60px rgba(0,0,0,.4);
+            flex: 1;
+        }
+        @media (max-width: 768px) {
+            .container { flex-direction: column; }
         }
 
         /* Auth bar */
@@ -226,90 +237,90 @@
     <p>ค้นหาและดาวน์โหลดวิดีโอการแพ็คสินค้าเป็นไฟล์ MP4</p>
 </div>
 
-<div class="card">
-
-    <!-- Auth Bar -->
-    <div class="auth-bar">
-        <div class="label">
-            สถานะ Google: <span id="auth-badge" class="badge badge-warn">⚪ ยังไม่ได้ล็อกอิน</span>
-        </div>
-        <button id="sign-in-btn" class="btn-sm btn-google" onclick="doSignIn()">🔑 Sign In</button>
-    </div>
-
-    <!-- Search Order -->
-    <div style="font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; font-weight: 600;">ค้นหาด้วย Order</div>
-    <div class="search-group" style="margin-bottom: 1.5rem;">
-        <input id="order-input" type="text"
-            placeholder="ใส่เลข Order (เช่น 250620-123456)"
-            onkeydown="if(event.key==='Enter') startDownload()">
-        <button id="search-btn" class="btn" onclick="startDownload()">🔍 ค้นหา</button>
-    </div>
-
-    <!-- Search Date -->
-    <div style="font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; font-weight: 600;">ค้นหาจากวันที่ (แสดงทั้งหมดในวันนั้น)</div>
-    <div class="search-group">
-        <input id="date-input" type="date" style="flex:1; background: var(--bg); border: 1.5px solid var(--border); color: var(--text); padding: 0.8rem 1rem; border-radius: 8px; font-size: 1rem; font-family: inherit; color-scheme: dark;">
-        <button id="search-date-btn" class="btn" style="background: #10b981;" onclick="startDailyFetch()">📅 ดึงข้อมูลรายวัน</button>
-    </div>
-
-    <!-- Daily List Container -->
-    <div id="daily-container" style="display: none; margin-bottom: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div style="font-weight: 600; font-size: 1.1rem;">📦 วิดีโอแพ็คสินค้า</div>
-            <div id="daily-count-badge" class="badge badge-ok" style="font-size: 0.9rem;">รวม: 0 รายการ</div>
-        </div>
-        <div id="daily-list" style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 400px; overflow-y: auto; padding-right: 0.5rem;">
-            <!-- list items go here -->
-        </div>
-    </div>
-
-
-    <!-- Steps -->
-    <div class="steps-label">ขั้นตอน</div>
-    <div class="steps" id="steps-container">
-        <div class="step" id="step-auth">
-            <div class="step-icon">🔐</div>
-            <div class="step-content">
-                <div class="step-title">ยืนยันตัวตน Google</div>
-                <div class="step-desc" id="step-auth-desc">รอการเข้าสู่ระบบ...</div>
+<div class="container">
+    <div class="card">
+        <!-- Auth Bar -->
+        <div class="auth-bar">
+            <div class="label">
+                สถานะ Google: <span id="auth-badge" class="badge badge-warn">⚪ ยังไม่ได้ล็อกอิน</span>
             </div>
+            <button id="sign-in-btn" class="btn-sm btn-google" onclick="doSignIn()">🔑 Sign In</button>
         </div>
-        <div class="step" id="step-search">
-            <div class="step-icon">🔍</div>
-            <div class="step-content">
-                <div class="step-title">ค้นหาไฟล์บน Google Drive</div>
-                <div class="step-desc" id="step-search-desc">รอรับคำสั่ง...</div>
+
+        <!-- Search Order -->
+        <div style="font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; font-weight: 600;">ค้นหาด้วย Order</div>
+        <div class="search-group" style="margin-bottom: 1.5rem;">
+            <input id="order-input" type="text"
+                placeholder="ใส่เลข Order (เช่น 250620-123456)"
+                onkeydown="if(event.key==='Enter') startDownload()">
+            <button id="search-btn" class="btn" onclick="startDownload()">🔍 ค้นหา</button>
+        </div>
+
+        <!-- Steps -->
+        <div class="steps-label">ขั้นตอน</div>
+        <div class="steps" id="steps-container">
+            <div class="step" id="step-auth">
+                <div class="step-icon">🔐</div>
+                <div class="step-content">
+                    <div class="step-title">ยืนยันตัวตน Google</div>
+                    <div class="step-desc" id="step-auth-desc">รอการเข้าสู่ระบบ...</div>
+                </div>
             </div>
-        </div>
-        <div class="step" id="step-download">
-            <div class="step-icon">⬇️</div>
-            <div class="step-content">
-                <div class="step-title">ดาวน์โหลดไฟล์จาก Drive</div>
-                <div class="step-desc" id="step-download-desc">รอขั้นตอนก่อนหน้า...</div>
-                <div class="progress-bar-wrap" id="dl-progress-wrap" style="display:none">
-                    <div class="progress-bar-fill" id="dl-progress-bar" style="width:0%"></div>
+            <div class="step" id="step-search">
+                <div class="step-icon">🔍</div>
+                <div class="step-content">
+                    <div class="step-title">ค้นหาไฟล์บน Google Drive</div>
+                    <div class="step-desc" id="step-search-desc">รอรับคำสั่ง...</div>
+                </div>
+            </div>
+            <div class="step" id="step-download">
+                <div class="step-icon">⬇️</div>
+                <div class="step-content">
+                    <div class="step-title">ดาวน์โหลดไฟล์จาก Drive</div>
+                    <div class="step-desc" id="step-download-desc">รอขั้นตอนก่อนหน้า...</div>
+                    <div class="progress-bar-wrap" id="dl-progress-wrap" style="display:none">
+                        <div class="progress-bar-fill" id="dl-progress-bar" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step" id="step-ready">
+                <div class="step-icon">✅</div>
+                <div class="step-content">
+                    <div class="step-title">พร้อมเล่นวิดีโอ / ดาวน์โหลด</div>
+                    <div class="step-desc" id="step-ready-desc">รอขั้นตอนก่อนหน้า...</div>
                 </div>
             </div>
         </div>
 
-        <div class="step" id="step-ready">
-            <div class="step-icon">✅</div>
-            <div class="step-content">
-                <div class="step-title">พร้อมเล่นวิดีโอ / ดาวน์โหลด</div>
-                <div class="step-desc" id="step-ready-desc">รอขั้นตอนก่อนหน้า...</div>
+        <!-- Video Player -->
+        <div id="video-wrap" class="video-wrap">
+            <video id="player" controls autoplay playsinline></video>
+        </div>
+
+        <!-- Download Button -->
+        <button id="download-btn" class="download-btn hidden" onclick="triggerDownload()">
+            ⬇️ ดาวน์โหลดวิดีโอ (.webm)
+        </button>
+    </div>
+
+    <div class="card">
+        <!-- Search Date -->
+        <div style="font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; font-weight: 600;">ค้นหาจากวันที่ (ดูสรุปยอดรายวัน)</div>
+        <div class="search-group">
+            <input id="date-input" type="date" style="flex:1; background: var(--bg); border: 1.5px solid var(--border); color: var(--text); padding: 0.8rem 1rem; border-radius: 8px; font-size: 1rem; font-family: inherit; color-scheme: dark;">
+            <button id="search-date-btn" class="btn" style="background: #10b981;" onclick="startDailyFetch()">📅 ดึงข้อมูล</button>
+        </div>
+
+        <!-- Chart Container -->
+        <div id="chart-container" style="display: none; margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div style="font-weight: 600; font-size: 1.1rem;">📈 สถิติการแพ็คสินค้ารายวัน</div>
+                <div id="daily-count-badge" class="badge badge-ok" style="font-size: 0.9rem;">รวม: 0 รายการ</div>
             </div>
+            <canvas id="dailyChart" width="400" height="300"></canvas>
         </div>
     </div>
-
-    <!-- Video Player -->
-    <div id="video-wrap" class="video-wrap">
-        <video id="player" controls autoplay playsinline></video>
-    </div>
-
-    <!-- Download Button -->
-    <button id="download-btn" class="download-btn hidden" onclick="triggerDownload()">
-        ⬇️ ดาวน์โหลดวิดีโอ (.webm)
-    </button>
 </div>
 
 <div class="footer">
@@ -508,6 +519,58 @@ function triggerDownload() {
 // ============================================================
 //  DAILY FETCH FLOW
 // ============================================================
+let chartInstance = null;
+
+function renderChart(hourlyCounts, dateVal) {
+    const ctx = document.getElementById('dailyChart').getContext('2d');
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+    
+    const labels = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+    
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'จำนวนออเดอร์',
+                data: hourlyCounts,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: '#10b981',
+                pointRadius: 3,
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { precision: 0, color: '#94a3b8' },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                },
+                x: {
+                    ticks: { color: '#94a3b8', maxRotation: 45, minRotation: 45 },
+                    grid: { color: 'rgba(255,255,255,0.05)' }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: (ctx) => `เวลา ${ctx[0].label}`,
+                        label: (ctx) => ` แพ็คได้: ${ctx.raw} กล่อง`
+                    }
+                }
+            }
+        }
+    });
+}
+
 async function startDailyFetch() {
     const dateVal = document.getElementById('date-input').value;
     if (!dateVal) { alert('กรุณาเลือกวันที่'); return; }
@@ -524,45 +587,22 @@ async function startDailyFetch() {
     const btnText = document.getElementById('search-date-btn').textContent;
     document.getElementById('search-date-btn').textContent = '⏳ กำลังดึงข้อมูล...';
     
-    // Hide player
-    document.getElementById('video-wrap').style.display = 'none';
-    document.getElementById('download-btn').classList.add('hidden');
-    if (document.getElementById('player')) {
-        document.getElementById('player').pause();
-    }
-    
     try {
         const prefix = dateVal.replace(/-/g, '_') + '_'; // e.g. 2026_06_21_
         const files = await searchDriveForDate(prefix);
         
-        document.getElementById('daily-container').style.display = 'block';
+        document.getElementById('chart-container').style.display = 'block';
         document.getElementById('daily-count-badge').textContent = `รวม: ${files.length} รายการ`;
         
-        const listEl = document.getElementById('daily-list');
-        listEl.innerHTML = '';
+        const hourlyCounts = new Array(24).fill(0);
+        files.forEach(f => {
+            if (f.createdTime) {
+                const d = new Date(f.createdTime);
+                hourlyCounts[d.getHours()]++;
+            }
+        });
         
-        if (files.length === 0) {
-            listEl.innerHTML = `<div style="text-align: center; color: var(--text2); padding: 1rem;">ไม่พบวิดีโอในวันที่ ${dateVal}</div>`;
-        } else {
-            files.forEach(f => {
-                const item = document.createElement('div');
-                item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: var(--bg); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border);';
-                
-                // Show order number instead of full name if possible
-                let displayName = f.name;
-                if (f.name.startsWith(prefix)) {
-                    displayName = f.name.substring(prefix.length).replace('.webm', '').replace('.mp4', '');
-                }
-                
-                item.innerHTML = `
-                    <div style="font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%;" title="${f.name}">${displayName} <span style="font-size: 0.75rem; color: var(--text2); font-weight: normal;">(${formatBytes(f.size)})</span></div>
-                    <div style="display: flex; gap: 0.5rem; flex-shrink: 0;">
-                        <button class="btn-sm" style="background: var(--accent);" onclick="playDailyVideo('${f.id}', '${f.name}', ${f.size})" title="เล่นวิดีโอ">▶️ เล่น</button>
-                    </div>
-                `;
-                listEl.appendChild(item);
-            });
-        }
+        renderChart(hourlyCounts, dateVal);
         
     } catch (err) {
         console.error(err);
@@ -572,51 +612,6 @@ async function startDailyFetch() {
     isBusy = false;
     document.getElementById('search-date-btn').disabled = false;
     document.getElementById('search-date-btn').textContent = btnText;
-}
-
-async function playDailyVideo(fileId, fileName, fileSize) {
-    if (isBusy) return;
-    isBusy = true;
-    
-    outputBlob = null;
-    outputFileName = '';
-    
-    // Reset steps
-    ['step-auth','step-search','step-download','step-ready'].forEach(id => {
-        const el = document.getElementById(id);
-        el.className = 'step';
-        const existing = el.querySelector('.step-spinner');
-        if (existing) existing.remove();
-    });
-    setStep('step-auth', 'done', 'ยืนยันตัวตนสำเร็จ');
-    setStep('step-search', 'done', `เลือกไฟล์: ${fileName}`);
-    
-    try {
-        setStep('step-download', 'active', `กำลังสตรีม ${fileName}...`);
-        const webmBuffer = await downloadFile(fileId, fileSize);
-        setStep('step-download', 'done', `สตรีมสำเร็จ (${formatBytes(webmBuffer.byteLength)})`);
-        
-        outputBlob = new Blob([webmBuffer], { type: fileName.endsWith('.mp4') ? 'video/mp4' : 'video/webm' });
-        outputFileName = fileName;
-        setStep('step-ready', 'done', `พร้อมเล่น "${outputFileName}"`);
-        
-        const videoUrl = URL.createObjectURL(outputBlob);
-        const videoEl = document.getElementById('player');
-        videoEl.src = videoUrl;
-        document.getElementById('video-wrap').style.display = 'block';
-        
-        document.getElementById('download-btn').textContent = `⬇️ ดาวน์โหลด ${outputFileName}`;
-        document.getElementById('download-btn').classList.remove('hidden');
-        
-        // Scroll to player
-        document.getElementById('video-wrap').scrollIntoView({ behavior: 'smooth' });
-    } catch (err) {
-        console.error(err);
-        alert('เกิดข้อผิดพลาด: ' + err.message);
-        setStep('step-download', 'error', 'เกิดข้อผิดพลาดในการสตรีม');
-    }
-    
-    isBusy = false;
 }
 
 // ============================================================
