@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Packing Recorder Lite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --surface2: #334155;
+            --border: #334155;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --accent: #3b82f6;
+            --accent2: #2563eb;
+            --danger: #ef4444;
+            --danger2: #dc2626;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.5rem;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .logo { font-size: 1.1rem; font-weight: 700; }
+        .header-right { display: flex; align-items: center; gap: 0.75rem; }
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .badge-warn { background: rgba(245,158,11,.2); color: var(--warning); }
+        .badge-ok { background: rgba(16,185,129,.2); color: var(--success); }
+
+        /* Layout */
+        .app { display: flex; flex: 1; overflow: hidden; }
+
+        /* Left Panel */
+        .left {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem;
+            gap: 1rem;
+            overflow-y: auto;
+        }
+
+        /* Camera Box */
+        .camera-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,.5);
+        }
+        #raw-video { display: none; }
+        #preview-canvas { width: 100%; height: 100%; display: block; }
+        .cam-placeholder {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            background: var(--surface);
+            color: var(--text2);
+            gap: 0.75rem;
+            font-size: 1rem;
+            z-index: 2;
+        }
+        .cam-placeholder .icon { font-size: 3rem; }
+        .cam-placeholder.hidden { display: none; }
+        .rec-indicator {
+            position: absolute;
+            top: 1rem; left: 1rem;
+            background: rgba(0,0,0,.7);
+            color: white;
+            padding: 0.4rem 0.9rem;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 5;
+            backdrop-filter: blur(4px);
+        }
+        .rec-indicator.hidden { display: none; }
+        .dot {
+            width: 10px; height: 10px;
+            background: var(--danger);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239,68,68,.7); }
+            70% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+            100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+        }
+
+        /* Controls */
+        .controls {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .field label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: .05em;
+            margin-bottom: 0.4rem;
+        }
+        input[type=text] {
+            width: 100%;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 0.85rem 1rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        input[type=text]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+        }
+        input:disabled { opacity: .5; cursor: not-allowed; }
+
+        .btn-row { display: flex; gap: 0.75rem; }
+        .btn {
+            flex: 1;
+            display: flex; align-items: center; justify-content: center;
+            gap: 0.5rem;
+            padding: 0.9rem;
+            border: none; border-radius: 8px;
+            font-size: 0.95rem; font-weight: 600;
+            cursor: pointer; font-family: inherit;
+            transition: all .15s;
+        }
+        .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: var(--accent); color: #fff; }
+        .btn-primary:not(:disabled):hover { background: var(--accent2); transform: translateY(-1px); }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-danger:not(:disabled):hover { background: var(--danger2); transform: translateY(-1px); }
+        .btn-sm {
+            padding: 0.45rem 0.9rem;
+            font-size: 0.8rem;
+            flex: none;
+            border: none; border-radius: 6px;
+            cursor: pointer; font-family: inherit; font-weight: 600;
+            transition: all .15s;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+        .btn-outline:hover { background: var(--surface2); }
+        .btn-google {
+            background: #fff;
+            color: #3c4043;
+        }
+        .btn-google:hover { background: #f8f9fa; }
+
+        /* Upload Status */
+        .upload-box {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+        .upload-box.hidden { display: none; }
+        .upload-box.uploading { background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2); color: var(--accent); }
+        .upload-box.success { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.2); color: var(--success); }
+        .upload-box.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: var(--danger); }
+        .spinner {
+            width: 18px; height: 18px; flex-shrink: 0;
+            border: 2.5px solid rgba(59,130,246,.3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Right Panel */
+        .right {
+            width: 380px; flex-shrink: 0;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            display: flex; flex-direction: column;
+        }
+        .history-head {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .history-head h2 { font-size: 1rem; margin-bottom: 0.75rem; }
+        .history-list {
+            flex: 1; overflow-y: auto;
+            padding: 0.75rem;
+            display: flex; flex-direction: column; gap: 0.4rem;
+        }
+        .date-label {
+            font-size: 0.7rem; font-weight: 700;
+            color: var(--text2); text-transform: uppercase;
+            letter-spacing: .06em;
+            padding: 0.5rem 0.25rem 0.25rem;
+        }
+        .hist-item {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.75rem;
+            transition: border-color .15s;
+        }
+        .hist-item:hover { border-color: var(--accent); }
+        .hist-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem; }
+        .hist-order { font-weight: 700; font-size: 0.9rem; }
+        .hist-badge { font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 9999px; font-weight: 700; }
+        .hist-badge.success { background: rgba(16,185,129,.2); color: var(--success); }
+        .hist-badge.uploading { background: rgba(59,130,246,.2); color: var(--accent); }
+        .hist-badge.failed { background: rgba(239,68,68,.2); color: var(--danger); }
+        .hist-meta { font-size: 0.78rem; color: var(--text2); margin-bottom: 0.5rem; }
+        .hist-link { font-size: 0.8rem; color: var(--accent); text-decoration: none; font-weight: 600; }
+        .hist-link:hover { text-decoration: underline; }
+        .empty { text-align: center; padding: 2rem; color: var(--text2); font-size: 0.9rem; }
+
+        /* Auth Modal */
+        .modal-bg {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,.75);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+        .modal-bg.hidden { display: none; }
+        .modal {
+            background: var(--surface);
+            border-radius: 16px;
+            width: 90%; max-width: 440px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px rgba(0,0,0,.5);
+        }
+        .modal-head {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-head h3 { font-size: 1rem; }
+        .close-x { background: none; border: none; color: var(--text2); font-size: 1.4rem; cursor: pointer; line-height: 1; }
+        .close-x:hover { color: var(--text); }
+        .modal-body { padding: 1.5rem; }
+        .modal-body p { color: var(--text2); font-size: 0.875rem; margin-bottom: 1rem; line-height: 1.6; }
+        .modal-foot {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: flex-end; gap: 0.5rem;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<header class="header">
+    <div class="logo">📦 Packing Recorder Lite</div>
+    <div class="header-right">
+        <span id="auth-badge" class="badge badge-warn">⚪ Not Signed In</span>
+        <button id="sign-in-btn" class="btn-sm btn-google" onclick="doSignIn()">🔑 Sign In with Google</button>
+        <button class="btn-sm btn-outline" onclick="openSettings()">⚙️ Setup</button>
+    </div>
+</header>
+
+<!-- ===== MAIN ===== -->
+<div class="app">
+
+    <!-- LEFT: Camera + Controls -->
+    <div class="left">
+
+        <!-- Camera Preview -->
+        <div class="camera-box">
+            <video id="raw-video" autoplay playsinline muted></video>
+            <canvas id="preview-canvas" width="1280" height="720"></canvas>
+            <div id="cam-placeholder" class="cam-placeholder">
+                <div class="icon">📸</div>
+                <div>พิมพ์หรือสแกน Order Number แล้วกด Enter เพื่อเริ่ม</div>
+            </div>
+            <div id="rec-indicator" class="rec-indicator hidden">
+                <span class="dot"></span>
+                🔴 Recording &nbsp;<span id="duration">00:00</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="field">
+                <label>Order Number</label>
+                <input id="order-input" type="text"
+                    placeholder="สแกน Barcode หรือพิมพ์แล้วกด Enter..."
+                    autocomplete="off" autofocus>
+            </div>
+            <div class="btn-row">
+                <button id="start-btn" class="btn btn-primary" disabled onclick="startRecording()">
+                    ▶ Start Recording
+                </button>
+                <button id="stop-btn" class="btn btn-danger" disabled onclick="stopRecording()">
+                    ⏹ Stop &amp; Upload
+                </button>
+            </div>
+            <div id="upload-box" class="upload-box hidden"></div>
+        </div>
+    </div>
+
+    <!-- RIGHT: History -->
+    <div class="right">
+        <div class="history-head">
+            <h2>📋 History</h2>
+            <input type="text" id="search-input" placeholder="ค้นหา Order Number..."
+                oninput="renderHistory(this.value)">
+        </div>
+        <div class="history-list" id="history-list">
+            <div class="empty">Loading...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== SETTINGS MODAL ===== -->
+<div id="settings-modal" class="modal-bg hidden">
+    <div class="modal">
+        <div class="modal-head">
+            <h3>⚙️ Google Drive Setup</h3>
+            <button class="close-x" onclick="closeSettings()">×</button>
+        </div>
+        <div class="modal-body">
+            <p>ใส่ Google OAuth2 Client ID เพื่อให้แอปสามารถอัปโหลดวิดีโอขึ้น Google Drive ได้ครับ</p>
+            <div class="field">
+                <label>Google Client ID</label>
+                <input type="text" id="client-id-input" placeholder="xxx.apps.googleusercontent.com">
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-sm btn-outline" onclick="closeSettings()">Cancel</button>
+            <button class="btn-sm btn-primary" onclick="saveSettings()">💾 Save & Reload</button>
+        </div>
+    </div>
+</div>
+
+<!-- ===== GOOGLE SCRIPTS ===== -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+
+<script>
+// ============================================================
+//  CONFIG
+// ============================================================
+const ROOT_FOLDER_ID = '1uKbeRbBONdq1aFMwIs94yfd4WXwG_fCj';
+const DEFAULT_CLIENT_ID = '277747309803-jvqfskqkehph1mmnamjbdh04vuagbj4m.apps.googleusercontent.com';
+
+function getClientId() {
+    return localStorage.getItem('gcp_client_id') || DEFAULT_CLIENT_ID;
+}
+
+// ============================================================
+//  STATE
+// ============================================================
+let accessToken = null;
+let tokenClient = null;
+let gapiReady = false;
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
+let startTime = null;
+let durationTimer = null;
+let currentOrderNo = '';
+
+// ============================================================
+//  INDEXEDDB
+// ============================================================
+let db = null;
+function openDB() {
+    return new Promise((res, rej) => {
+        const req = indexedDB.open('PackingRecorderDB', 1);
+        req.onupgradeneeded = e => {
+            const d = e.target.result;
+            if (!d.objectStoreNames.contains('videos')) {
+                const s = d.createObjectStore('videos', { keyPath: 'id', autoIncrement: true });
+                s.createIndex('order_no', 'order_no', { unique: false });
+            }
+        };
+        req.onsuccess = e => { db = e.target.result; res(db); };
+        req.onerror = e => rej(e.target.error);
+    });
+}
+function dbAdd(data) {
+    return new Promise((res, rej) => {
+        const tx = db.transaction('videos', 'readwrite');
+        const req = tx.objectStore('videos').add({ ...data, created_at: new Date().toISOString() });
+        req.onsuccess = e => res(e.target.result);
+        req.onerror = e => rej(e.target.error);
+    });
+}
+function dbUpdate(id, updates) {
+    return new Promise((res, rej) => {
+        const tx = db.transaction('videos', 'readwrite');
+        const store = tx.objectStore('videos');
+        const get = store.get(id);
+        get.onsuccess = e => {
+            const rec = { ...e.target.result, ...updates };
+            const put = store.put(rec);
+            put.onsuccess = () => res(rec);
+            put.onerror = e2 => rej(e2.target.error);
+        };
+        get.onerror = e => rej(e.target.error);
+    });
+}
+function dbGetAll() {
+    return new Promise((res, rej) => {
+        const tx = db.transaction('videos', 'readonly');
+        const req = tx.objectStore('videos').getAll();
+        req.onsuccess = e => res(e.target.result.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+        req.onerror = e => rej(e.target.error);
+    });
+}
+
+// ============================================================
+//  GOOGLE AUTH
+// ============================================================
+function waitForGoogle() {
+    return new Promise(res => {
+        const check = () => {
+            if (window.google && window.gapi) res();
+            else setTimeout(check, 100);
+        };
+        check();
+    });
+}
+
+async function initAuth() {
+    await waitForGoogle();
+
+    // Init GAPI Drive client
+    await new Promise(res => gapi.load('client', res));
+    await gapi.client.init({
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+    });
+    gapiReady = true;
+
+    // Init token client
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: getClientId(),
+        scope: 'https://www.googleapis.com/auth/drive.file',
+        callback: resp => {
+            if (resp.error) {
+                console.error('Auth error:', resp);
+                setAuthUI(false);
+                return;
+            }
+            accessToken = resp.access_token;
+            setAuthUI(true);
+        }
+    });
+
+    // Try silent login first (works if user already consented)
+    tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function doSignIn() {
+    if (!tokenClient) {
+        alert('ระบบยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่ครับ');
+        return;
+    }
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
+function setAuthUI(ok) {
+    const badge = document.getElementById('auth-badge');
+    const btn = document.getElementById('sign-in-btn');
+    if (ok) {
+        badge.textContent = '🟢 Authenticated';
+        badge.className = 'badge badge-ok';
+        btn.style.display = 'none';
+    } else {
+        badge.textContent = '⚪ Not Signed In';
+        badge.className = 'badge badge-warn';
+        btn.style.display = '';
+    }
+}
+
+// ============================================================
+//  SETTINGS
+// ============================================================
+function openSettings() {
+    document.getElementById('client-id-input').value = getClientId();
+    document.getElementById('settings-modal').classList.remove('hidden');
+}
+function closeSettings() {
+    document.getElementById('settings-modal').classList.add('hidden');
+}
+function saveSettings() {
+    const val = document.getElementById('client-id-input').value.trim();
+    if (!val) { alert('กรุณาใส่ Client ID ครับ'); return; }
+    localStorage.setItem('gcp_client_id', val);
+    location.reload();
+}
+
+// ============================================================
+//  CANVAS / OVERLAY
+// ============================================================
+const rawVideo = document.getElementById('raw-video');
+const canvas = document.getElementById('preview-canvas');
+const ctx = canvas.getContext('2d');
+
+function drawLoop() {
+    if (rawVideo.readyState >= 2 && !rawVideo.paused) {
+        ctx.drawImage(rawVideo, 0, 0, canvas.width, canvas.height);
+        drawOverlay();
+    }
+    requestAnimationFrame(drawLoop);
+}
+
+function drawOverlay() {
+    if (!isRecording) return;
+    const orderText = 'Order : ' + currentOrderNo;
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    const timeText = dateStr + ' ' + timeStr;
+
+    const W = canvas.width, H = canvas.height;
+    const pad16 = 16, lineH = 30, boxW = 320, boxH = 74;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.beginPath();
+    ctx.roundRect(W - boxW - pad16, H - boxH - pad16, boxW, boxH, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 20px Inter, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(orderText, W - pad16 - 8, H - pad16 - boxH + 24);
+    ctx.font = '17px Inter, sans-serif';
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(timeText, W - pad16 - 8, H - pad16 - 8);
+
+    // Red border while recording
+    ctx.strokeStyle = 'rgba(239,68,68,0.8)';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(2.5, 2.5, W-5, H-5);
+    ctx.restore();
+}
+
+// ============================================================
+//  RECORDING
+// ============================================================
+const orderInput = document.getElementById('order-input');
+const startBtn   = document.getElementById('start-btn');
+const stopBtn    = document.getElementById('stop-btn');
+const placeholder = document.getElementById('cam-placeholder');
+const recIndicator = document.getElementById('rec-indicator');
+const durationEl = document.getElementById('duration');
+
+orderInput.addEventListener('input', () => {
+    startBtn.disabled = orderInput.value.trim() === '' || isRecording;
+});
+
+orderInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && orderInput.value.trim() && !isRecording) {
+        e.preventDefault();
+        startRecording();
+    }
+});
+
+async function startRecording() {
+    const orderNo = orderInput.value.trim();
+    if (!orderNo || isRecording) return;
+
+    currentOrderNo = orderNo;
+    startBtn.disabled = true;
+    orderInput.disabled = true;
+    placeholder.innerHTML = '<div class="icon">⏳</div><div>กำลังเปิดกล้อง...</div>';
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 15, max: 15 } },
+            audio: false
+        });
+        rawVideo.srcObject = stream;
+        await rawVideo.play();
+        placeholder.classList.add('hidden');
+
+        // MediaRecorder from canvas
+        const canvasStream = canvas.captureStream(15);
+        let mime = 'video/webm; codecs=vp9';
+        if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm; codecs=vp8';
+        if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
+
+        recordedChunks = [];
+        mediaRecorder = new MediaRecorder(canvasStream, { mimeType: mime, videoBitsPerSecond: 2_500_000 });
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+        mediaRecorder.onstop = () => finalize(orderNo);
+        mediaRecorder.start(1000); // collect chunk every 1 sec
+
+        isRecording = true;
+        startTime = Date.now();
+        stopBtn.disabled = false;
+        recIndicator.classList.remove('hidden');
+        durationTimer = setInterval(updateDuration, 1000);
+        updateDuration();
+
+    } catch (err) {
+        console.error(err);
+        alert('ไม่สามารถเปิดกล้องได้: ' + err.message);
+        placeholder.innerHTML = '<div class="icon">❌</div><div>เปิดกล้องไม่ได้ ลองใหม่อีกครั้ง</div>';
+        startBtn.disabled = false;
+        orderInput.disabled = false;
+    }
+}
+
+function updateDuration() {
+    const s = Math.floor((Date.now() - startTime) / 1000);
+    durationEl.textContent = String(Math.floor(s/60)).padStart(2,'0') + ':' + String(s%60).padStart(2,'0');
+}
+
+function stopRecording() {
+    if (!mediaRecorder || !isRecording) return;
+    mediaRecorder.stop();
+    isRecording = false;
+    clearInterval(durationTimer);
+
+    // Stop camera
+    rawVideo.srcObject?.getTracks().forEach(t => t.stop());
+    rawVideo.srcObject = null;
+
+    stopBtn.disabled = true;
+    recIndicator.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+    placeholder.innerHTML = '<div class="icon">📸</div><div>พิมพ์หรือสแกน Order Number แล้วกด Enter เพื่อเริ่ม</div>';
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+}
+
+// ============================================================
+//  FINALIZE & UPLOAD
+// ============================================================
+async function finalize(orderNo) {
+    const durationSec = Math.floor((Date.now() - startTime) / 1000);
+    const now = new Date(startTime);
+    const pad = n => String(n).padStart(2, '0');
+    const yyyy = now.getFullYear(), mm = pad(now.getMonth()+1), dd = pad(now.getDate());
+    const safeOrder = orderNo.replace(/[^a-zA-Z0-9\-]/g, '_');
+    const fileName = `${yyyy}_${mm}_${dd}_${safeOrder}.webm`;
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+
+    // Save to DB first
+    const recId = await dbAdd({
+        order_no: orderNo, file_name: fileName,
+        drive_file_id: null, drive_url: null,
+        start_time: new Date(startTime).toISOString(),
+        end_time: new Date().toISOString(),
+        duration_seconds: durationSec,
+        status: 'UPLOADING'
+    });
+    await renderHistory();
+
+    showUpload('uploading', `⏫ กำลังอัปโหลด ${fileName}...`);
+
+    if (!accessToken) {
+        await dbUpdate(recId, { status: 'FAILED' });
+        showUpload('error', '❌ Upload ล้มเหลว — กรุณา Sign In with Google ก่อนครับ');
+        orderInput.disabled = false;
+        orderInput.value = '';
+        startBtn.disabled = true;
+        await renderHistory();
+        return;
+    }
+
+    try {
+        const folderId = await ensureDateFolders(yyyy, mm, dd);
+        const result = await uploadToDrive(blob, fileName, folderId);
+        await dbUpdate(recId, { status: 'SUCCESS', drive_file_id: result.id, drive_url: result.webViewLink });
+        showUpload('success', `✅ Upload สำเร็จ! ${fileName}`);
+        orderInput.value = '';
+        startBtn.disabled = true;
+    } catch (err) {
+        console.error('Upload error:', err);
+        await dbUpdate(recId, { status: 'FAILED' });
+        showUpload('error', '❌ Upload ล้มเหลว — ' + err.message);
+    }
+
+    orderInput.disabled = false;
+    await renderHistory();
+}
+
+function showUpload(type, msg) {
+    const box = document.getElementById('upload-box');
+    box.className = 'upload-box ' + type;
+    if (type === 'uploading') {
+        box.innerHTML = `<div class="spinner"></div><span>${msg}</span>`;
+    } else {
+        box.innerHTML = `<span>${msg}</span>`;
+    }
+}
+
+// ============================================================
+//  GOOGLE DRIVE HELPERS
+// ============================================================
+async function driveQuery(q) {
+    const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    const data = await resp.json();
+    return data.files || [];
+}
+
+async function createFolder(name, parentId) {
+    const resp = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
+    });
+    const data = await resp.json();
+    return data.id;
+}
+
+async function getOrCreate(name, parentId) {
+    const q = `name='${name}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const files = await driveQuery(q);
+    if (files.length > 0) {
+        console.log(`Folder "${name}" already exists → using it`);
+        return files[0].id;
+    }
+    console.log(`Folder "${name}" not found → creating`);
+    return await createFolder(name, parentId);
+}
+
+async function ensureDateFolders(yyyy, mm, dd) {
+    const yearId  = await getOrCreate(yyyy, ROOT_FOLDER_ID);
+    const monthId = await getOrCreate(mm, yearId);
+    const dayId   = await getOrCreate(dd, monthId);
+    return dayId;
+}
+
+async function uploadToDrive(blob, fileName, folderId) {
+    const meta = { name: fileName, parents: [folderId], mimeType: blob.type };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+    form.append('file', blob);
+
+    const resp = await fetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+        { method: 'POST', headers: { Authorization: 'Bearer ' + accessToken }, body: form }
+    );
+    if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error?.message || resp.statusText);
+    }
+    return await resp.json();
+}
+
+// ============================================================
+//  HISTORY
+// ============================================================
+async function renderHistory(query = '') {
+    const all = await dbGetAll();
+    const list = document.getElementById('history-list');
+    const filtered = query
+        ? all.filter(v => v.order_no.toLowerCase().includes(query.toLowerCase()))
+        : all;
+
+    if (!filtered.length) {
+        list.innerHTML = '<div class="empty">ยังไม่มีประวัติการบันทึกครับ</div>';
+        return;
+    }
+
+    let html = '', lastDate = '';
+    filtered.forEach(v => {
+        const d = v.created_at.split('T')[0];
+        if (d !== lastDate) {
+            lastDate = d;
+            html += `<div class="date-label">${d}</div>`;
+        }
+        const m = String(Math.floor(v.duration_seconds/60)).padStart(2,'0');
+        const s = String(v.duration_seconds%60).padStart(2,'0');
+        const sc = v.status.toLowerCase();
+        html += `
+        <div class="hist-item">
+            <div class="hist-top">
+                <span class="hist-order">${v.order_no}</span>
+                <span class="hist-badge ${sc}">${v.status}</span>
+            </div>
+            <div class="hist-meta">⏱ ${m}:${s} &nbsp;|&nbsp; ${v.file_name}</div>
+            ${v.drive_url ? `<a href="${v.drive_url}" target="_blank" class="hist-link">↗ เปิดใน Google Drive</a>` : ''}
+        </div>`;
+    });
+    list.innerHTML = html;
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+(async () => {
+    await openDB();
+    await renderHistory();
+    drawLoop();
+    initAuth(); // non-blocking — handles async gapi/google loading
+})();
+</script>
+</body>
+</html>

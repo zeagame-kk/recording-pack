@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Packing Video Downloader</title>
+
+    <!-- Required for FFmpeg.wasm to work on GitHub Pages (adds COOP/COEP headers via ServiceWorker) -->
+    <script src="https://cdn.jsdelivr.net/gh/gzuidhof/coi-serviceworker@v0.1.7/coi-serviceworker.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text: #f8fafc;
+            --text2: #94a3b8;
+            --accent: #6366f1;
+            --accent2: #4f46e5;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --pending: #475569;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .header h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+        .header p { color: var(--text2); font-size: 0.9rem; }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 2rem;
+            width: 100%;
+            max-width: 560px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.4);
+        }
+
+        /* Auth bar */
+        .auth-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            background: var(--bg);
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+        }
+        .auth-bar .label { font-size: 0.85rem; color: var(--text2); }
+        .badge { font-size: 0.8rem; font-weight: 600; padding: 0.25rem 0.75rem; border-radius: 9999px; }
+        .badge-ok { background: rgba(16,185,129,.2); color: var(--success); }
+        .badge-warn { background: rgba(245,158,11,.2); color: var(--warning); }
+
+        /* Search */
+        .search-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+        input[type=text] {
+            flex: 1;
+            background: var(--bg);
+            border: 1.5px solid var(--border);
+            color: var(--text);
+            padding: 0.9rem 1rem;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            transition: border-color .2s, box-shadow .2s;
+        }
+        input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(99,102,241,.2); }
+        input::placeholder { color: var(--pending); font-weight: 400; }
+        input:disabled { opacity: .5; }
+
+        .btn {
+            padding: 0.9rem 1.5rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all .15s;
+            white-space: nowrap;
+        }
+        .btn:hover:not(:disabled) { background: var(--accent2); transform: translateY(-1px); }
+        .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+        .btn-sm {
+            padding: 0.35rem 0.8rem;
+            font-size: 0.8rem;
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+        }
+        .btn-google { background: #fff; color: #3c4043; }
+        .btn-google:hover { background: #f1f3f4; }
+
+        /* Steps */
+        .steps-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: var(--text2);
+            margin-bottom: 0.75rem;
+        }
+        .steps { display: flex; flex-direction: column; gap: 0.5rem; }
+        .step {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            background: var(--bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: border-color .3s, background .3s;
+        }
+        .step.active { border-color: var(--accent); background: rgba(99,102,241,.07); }
+        .step.done { border-color: rgba(16,185,129,.3); }
+        .step.error { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.05); }
+
+        .step-icon { font-size: 1.1rem; flex-shrink: 0; line-height: 1.4; }
+        .step-content { flex: 1; }
+        .step-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 0.15rem; }
+        .step-desc { font-size: 0.8rem; color: var(--text2); line-height: 1.5; }
+
+        /* Spinner in step */
+        .step-spinner {
+            width: 16px; height: 16px;
+            border: 2px solid rgba(99,102,241,.3);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Progress bar */
+        .progress-bar-wrap {
+            background: var(--border);
+            border-radius: 9999px;
+            height: 4px;
+            margin-top: 0.5rem;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 9999px;
+            transition: width .3s;
+        }
+
+        /* Download button */
+        .download-btn {
+            display: block;
+            width: 100%;
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--success), #059669);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all .15s;
+            text-align: center;
+        }
+        .download-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,185,129,.3); }
+        .download-btn.hidden { display: none; }
+
+        /* Footer */
+        .footer {
+            margin-top: 2rem;
+            color: var(--pending);
+            font-size: 0.78rem;
+            text-align: center;
+            line-height: 1.6;
+        }
+        a { color: var(--accent); }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🎬 Packing Video Downloader</h1>
+    <p>ค้นหาและดาวน์โหลดวิดีโอการแพ็คสินค้าเป็นไฟล์ MP4</p>
+</div>
+
+<div class="card">
+
+    <!-- Auth Bar -->
+    <div class="auth-bar">
+        <div class="label">
+            สถานะ Google: <span id="auth-badge" class="badge badge-warn">⚪ ยังไม่ได้ล็อกอิน</span>
+        </div>
+        <button id="sign-in-btn" class="btn-sm btn-google" onclick="doSignIn()">🔑 Sign In</button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-group">
+        <input id="order-input" type="text"
+            placeholder="ใส่เลข Order (เช่น 250620-123456)"
+            onkeydown="if(event.key==='Enter') startDownload()">
+        <button id="search-btn" class="btn" onclick="startDownload()">🔍 ค้นหา</button>
+    </div>
+
+    <!-- Steps -->
+    <div class="steps-label">ขั้นตอน</div>
+    <div class="steps" id="steps-container">
+        <div class="step" id="step-auth">
+            <div class="step-icon">🔐</div>
+            <div class="step-content">
+                <div class="step-title">ยืนยันตัวตน Google</div>
+                <div class="step-desc" id="step-auth-desc">รอการเข้าสู่ระบบ...</div>
+            </div>
+        </div>
+        <div class="step" id="step-search">
+            <div class="step-icon">🔍</div>
+            <div class="step-content">
+                <div class="step-title">ค้นหาไฟล์บน Google Drive</div>
+                <div class="step-desc" id="step-search-desc">รอรับคำสั่ง...</div>
+            </div>
+        </div>
+        <div class="step" id="step-download">
+            <div class="step-icon">⬇️</div>
+            <div class="step-content">
+                <div class="step-title">ดาวน์โหลดไฟล์จาก Drive</div>
+                <div class="step-desc" id="step-download-desc">รอขั้นตอนก่อนหน้า...</div>
+                <div class="progress-bar-wrap" id="dl-progress-wrap" style="display:none">
+                    <div class="progress-bar-fill" id="dl-progress-bar" style="width:0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="step" id="step-ffmpeg">
+            <div class="step-icon">⚙️</div>
+            <div class="step-content">
+                <div class="step-title">โหลด FFmpeg (ครั้งแรกใช้เวลาสักครู่)</div>
+                <div class="step-desc" id="step-ffmpeg-desc">รอขั้นตอนก่อนหน้า...</div>
+            </div>
+        </div>
+        <div class="step" id="step-convert">
+            <div class="step-icon">🎬</div>
+            <div class="step-content">
+                <div class="step-title">แปลงไฟล์ WebM → MP4 (H.264)</div>
+                <div class="step-desc" id="step-convert-desc">รอขั้นตอนก่อนหน้า...</div>
+                <div class="progress-bar-wrap" id="conv-progress-wrap" style="display:none">
+                    <div class="progress-bar-fill" id="conv-progress-bar" style="width:0%; background: var(--success);"></div>
+                </div>
+            </div>
+        </div>
+        <div class="step" id="step-ready">
+            <div class="step-icon">✅</div>
+            <div class="step-content">
+                <div class="step-title">พร้อมดาวน์โหลด MP4</div>
+                <div class="step-desc" id="step-ready-desc">รอขั้นตอนก่อนหน้า...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Download Button -->
+    <button id="download-btn" class="download-btn hidden" onclick="triggerDownload()">
+        ⬇️ ดาวน์โหลด MP4
+    </button>
+</div>
+
+<div class="footer">
+    Packing Recorder Lite — Phase 0 &nbsp;|&nbsp;
+    วิดีโอถูกแปลงในเบราว์เซอร์ของคุณ ไม่มีข้อมูลส่งออกไปภายนอก<br>
+    <small>ต้องใช้ Google Account ที่มีสิทธิ์เข้าถึง Shared Drive ของบริษัทครับ</small>
+</div>
+
+<!-- Google APIs -->
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+
+<!-- FFmpeg.wasm v0.11 (simpler API, no SharedArrayBuffer required for basic use) -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+
+<script>
+// ============================================================
+//  CONFIG
+// ============================================================
+const ROOT_FOLDER_ID = '1uKbeRbBONdq1aFMwIs94yfd4WXwG_fCj';
+const DEFAULT_CLIENT_ID = '277747309803-jvqfskqkehph1mmnamjbdh04vuagbj4m.apps.googleusercontent.com';
+
+// ============================================================
+//  STATE
+// ============================================================
+let accessToken = null;
+let tokenClient = null;
+let ffmpegInstance = null;
+let outputBlob = null;
+let outputFileName = '';
+let isBusy = false;
+
+// ============================================================
+//  AUTH
+// ============================================================
+function waitForGoogle() {
+    return new Promise(res => {
+        const check = () => (window.google && window.gapi) ? res() : setTimeout(check, 100);
+        check();
+    });
+}
+
+async function initAuth() {
+    await waitForGoogle();
+
+    await new Promise(res => gapi.load('client', res));
+    await gapi.client.init({
+        discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest']
+    });
+
+    tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: DEFAULT_CLIENT_ID,
+        scope: 'https://www.googleapis.com/auth/drive.readonly',
+        callback: resp => {
+            if (resp.error) { setAuthUI(false); return; }
+            accessToken = resp.access_token;
+            setAuthUI(true);
+            setStep('step-auth', 'done', `✅ ล็อกอินสำเร็จ`);
+        }
+    });
+
+    // Try silent login
+    tokenClient.requestAccessToken({ prompt: '' });
+}
+
+function doSignIn() {
+    if (!tokenClient) { alert('ระบบยังโหลดไม่เสร็จ กรุณารอแล้วลองใหม่'); return; }
+    tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
+function setAuthUI(ok) {
+    const badge = document.getElementById('auth-badge');
+    const btn = document.getElementById('sign-in-btn');
+    if (ok) {
+        badge.textContent = '🟢 ล็อกอินแล้ว';
+        badge.className = 'badge badge-ok';
+        btn.style.display = 'none';
+        setStep('step-auth', 'done', 'ยืนยันตัวตนสำเร็จ');
+    } else {
+        badge.textContent = '⚪ ยังไม่ได้ล็อกอิน';
+        badge.className = 'badge badge-warn';
+        btn.style.display = '';
+    }
+}
+
+// ============================================================
+//  STEP UI HELPERS
+// ============================================================
+// status: 'pending' | 'active' | 'done' | 'error'
+function setStep(id, status, desc) {
+    const el = document.getElementById(id);
+    const descEl = document.getElementById(id + '-desc');
+    el.className = 'step ' + (status === 'pending' ? '' : status);
+    if (desc) descEl.textContent = desc;
+
+    // Remove any existing spinner
+    const existing = el.querySelector('.step-spinner');
+    if (existing) existing.remove();
+
+    if (status === 'active') {
+        const spinner = document.createElement('div');
+        spinner.className = 'step-spinner';
+        el.appendChild(spinner);
+    }
+}
+
+function setDlProgress(pct) {
+    document.getElementById('dl-progress-wrap').style.display = 'block';
+    document.getElementById('dl-progress-bar').style.width = pct + '%';
+}
+
+function setConvProgress(pct) {
+    document.getElementById('conv-progress-wrap').style.display = 'block';
+    document.getElementById('conv-progress-bar').style.width = pct + '%';
+}
+
+// ============================================================
+//  MAIN FLOW
+// ============================================================
+async function startDownload() {
+    const orderNo = document.getElementById('order-input').value.trim();
+    if (!orderNo) { alert('กรุณาใส่เลข Order ครับ'); return; }
+    if (isBusy) return;
+
+    if (!accessToken) {
+        alert('กรุณา Sign In with Google ก่อนครับ');
+        doSignIn();
+        return;
+    }
+
+    isBusy = true;
+    outputBlob = null;
+    outputFileName = '';
+    document.getElementById('search-btn').disabled = true;
+    document.getElementById('order-input').disabled = true;
+    document.getElementById('download-btn').classList.add('hidden');
+
+    // Reset all steps
+    ['step-auth','step-search','step-download','step-ffmpeg','step-convert','step-ready'].forEach(id => {
+        const el = document.getElementById(id);
+        el.className = 'step';
+        const existing = el.querySelector('.step-spinner');
+        if (existing) existing.remove();
+    });
+    setStep('step-auth', 'done', 'ยืนยันตัวตนสำเร็จ');
+
+    try {
+        // ── STEP 1: Search ────────────────────────────────
+        setStep('step-search', 'active', `กำลังค้นหาไฟล์ที่มี "${orderNo}" บน Google Drive...`);
+        const file = await searchDriveForOrder(orderNo);
+        if (!file) {
+            setStep('step-search', 'error', `❌ ไม่พบไฟล์ที่มี Order "${orderNo}" บน Drive`);
+            throw new Error('File not found');
+        }
+        setStep('step-search', 'done', `พบไฟล์: ${file.name} (${formatBytes(file.size)})`);
+
+        // ── STEP 2: Download ──────────────────────────────
+        setStep('step-download', 'active', `กำลังดาวน์โหลด ${file.name}...`);
+        const webmBuffer = await downloadFile(file.id, file.size);
+        setStep('step-download', 'done', `ดาวน์โหลดสำเร็จ (${formatBytes(webmBuffer.byteLength)})`);
+
+        // ── STEP 3: Load FFmpeg ───────────────────────────
+        setStep('step-ffmpeg', 'active', 'กำลังโหลด FFmpeg... (ครั้งแรกอาจใช้เวลา 10–30 วินาที)');
+        await loadFFmpeg();
+        setStep('step-ffmpeg', 'done', 'โหลด FFmpeg สำเร็จ');
+
+        // ── STEP 4: Convert ───────────────────────────────
+        const mp4Name = file.name.replace(/\.webm$/, '.mp4');
+        setStep('step-convert', 'active', `กำลังแปลง ${file.name} → ${mp4Name}...`);
+        const mp4Buffer = await convertToMp4(webmBuffer, file.name, mp4Name);
+        setStep('step-convert', 'done', `แปลงสำเร็จ! ขนาดไฟล์: ${formatBytes(mp4Buffer.byteLength)}`);
+
+        // ── STEP 5: Ready ─────────────────────────────────
+        outputBlob = new Blob([mp4Buffer], { type: 'video/mp4' });
+        outputFileName = mp4Name;
+        setStep('step-ready', 'done', `พร้อมดาวน์โหลด "${mp4Name}"`);
+
+        document.getElementById('download-btn').textContent = `⬇️ ดาวน์โหลด ${mp4Name}`;
+        document.getElementById('download-btn').classList.remove('hidden');
+
+    } catch (err) {
+        console.error(err);
+        if (err.message !== 'File not found') {
+            alert('เกิดข้อผิดพลาด: ' + err.message);
+        }
+    }
+
+    isBusy = false;
+    document.getElementById('search-btn').disabled = false;
+    document.getElementById('order-input').disabled = false;
+}
+
+function triggerDownload() {
+    if (!outputBlob) return;
+    const url = URL.createObjectURL(outputBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = outputFileName;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ============================================================
+//  GOOGLE DRIVE
+// ============================================================
+async function searchDriveForOrder(orderNo) {
+    // Search for any file whose name contains the order number
+    const safeOrder = orderNo.replace(/'/g, "\\'");
+    const q = `name contains '${safeOrder}' and mimeType != 'application/vnd.google-apps.folder' and trashed = false`;
+    const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name,size)&spaces=drive&pageSize=10`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    const data = await resp.json();
+    const files = (data.files || []).filter(f => f.name.endsWith('.webm') || f.name.endsWith('.mp4'));
+    // Pick WebM first, then MP4
+    return files.find(f => f.name.endsWith('.webm')) || files[0] || null;
+}
+
+async function downloadFile(fileId, totalSize) {
+    const resp = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!resp.ok) throw new Error('Download failed: ' + resp.statusText);
+
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        const pct = totalSize ? Math.round((received / totalSize) * 100) : 0;
+        setDlProgress(pct);
+        document.getElementById('step-download-desc').textContent =
+            `ดาวน์โหลด: ${formatBytes(received)} / ${formatBytes(totalSize || received)} (${pct}%)`;
+    }
+
+    // Merge chunks
+    const total = chunks.reduce((acc, c) => acc + c.length, 0);
+    const buffer = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) { buffer.set(chunk, offset); offset += chunk.length; }
+    return buffer.buffer;
+}
+
+// ============================================================
+//  FFMPEG
+// ============================================================
+async function loadFFmpeg() {
+    if (ffmpegInstance && ffmpegInstance.isLoaded()) return;
+    const { createFFmpeg } = FFmpeg;
+    ffmpegInstance = createFFmpeg({
+        log: false,
+        progress: ({ ratio }) => {
+            const pct = Math.round(ratio * 100);
+            setConvProgress(pct);
+            document.getElementById('step-convert-desc').textContent =
+                `กำลังแปลง... ${pct}%`;
+        }
+    });
+    await ffmpegInstance.load();
+}
+
+async function convertToMp4(inputBuffer, inputName, outputName) {
+    const { fetchFile } = FFmpeg;
+
+    // Write input file to FFmpeg virtual FS
+    ffmpegInstance.FS('writeFile', inputName, new Uint8Array(inputBuffer));
+
+    // Convert: WebM (VP8/VP9, no audio) → MP4 (H.264)
+    await ffmpegInstance.run(
+        '-i', inputName,
+        '-c:v', 'libx264',
+        '-preset', 'fast',
+        '-crf', '23',
+        '-an',           // No audio track
+        '-movflags', '+faststart',
+        outputName
+    );
+
+    const data = ffmpegInstance.FS('readFile', outputName);
+
+    // Cleanup
+    try { ffmpegInstance.FS('unlink', inputName); } catch {}
+    try { ffmpegInstance.FS('unlink', outputName); } catch {}
+
+    return data.buffer;
+}
+
+// ============================================================
+//  UTILS
+// ============================================================
+function formatBytes(bytes) {
+    if (!bytes) return '?';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// ============================================================
+//  BOOT
+// ============================================================
+initAuth();
+</script>
+</body>
+</html>
