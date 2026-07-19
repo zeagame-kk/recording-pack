@@ -5,6 +5,9 @@
 .Spotlight-V100
 .Trashes
 
+# Extension Code (Personal Use Only)
+extension/
+
 # Old modular source files (not used — everything is now in index.html)
 src/
 

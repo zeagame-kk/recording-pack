@@ -648,7 +648,9 @@ async function startRecording() {
 
         // MediaRecorder from canvas
         const canvasStream = canvas.captureStream(15);
-        let mime = 'video/webm; codecs=vp9';
+        let mime = 'video/mp4; codecs=avc1.42E01E,opus';
+        if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/mp4';
+        if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm; codecs=vp9';
         if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm; codecs=vp8';
         if (!MediaRecorder.isTypeSupported(mime)) mime = 'video/webm';
 
@@ -709,8 +711,15 @@ async function finalize(orderNo) {
     const pad = n => String(n).padStart(2, '0');
     const yyyy = now.getFullYear(), mm = pad(now.getMonth()+1), dd = pad(now.getDate());
     const safeOrder = orderNo.replace(/[^a-zA-Z0-9\-]/g, '_');
-    const fileName = `${yyyy}_${mm}_${dd}_${safeOrder}.webm`;
-    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    
+    // Determine actual file extension based on recorder config
+    const recordedMime = mediaRecorder ? mediaRecorder.mimeType : 'video/webm';
+    const isMP4 = recordedMime.includes('mp4');
+    const fileExt = isMP4 ? 'mp4' : 'webm';
+    const blobType = isMP4 ? 'video/mp4' : 'video/webm';
+
+    const fileName = `return_${yyyy}_${mm}_${dd}_${safeOrder}.${fileExt}`;
+    const blob = new Blob(recordedChunks, { type: blobType });
 
     // Save to DB first
     const recId = await dbAdd({

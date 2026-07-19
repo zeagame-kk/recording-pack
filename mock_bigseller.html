@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Mock BigSeller - Scan to Inspection</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f0f2f5;
+    }
+    .header {
+      background: #fff;
+      padding: 15px 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .main-container {
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .scan_form_wrap {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .scan_form_wrap input {
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 300px;
+    }
+    .info-panel {
+      margin-top: 20px;
+      padding: 15px;
+      background: #fafafa;
+      border: 1px solid #e8e8e8;
+      border-radius: 4px;
+    }
+    .info-row {
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+    .actions {
+      margin-top: 20px;
+    }
+    button.clear-btn {
+      padding: 10px 20px;
+      background: #ff4d4f;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button.clear-btn:hover {
+      background: #ff7875;
+    }
+    
+    /* Mock simulation helpers */
+    .mock-controls {
+      margin-top: 50px;
+      padding: 10px;
+      background: #e6f7ff;
+      border: 1px dashed #91d5ff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    BigSeller - สแกนตรวจสอบสินค้า (MOCK PAGE)
+  </div>
+
+  <div class="main-container">
+    
+    <!-- Simulation of the Scan Input -->
+    <div class="scan_form_wrap">
+      <input type="text" id="mock-scan-input" placeholder="สแกนหมายเลขติดตาม/หมายเลขคำสั่งซื้อ/SKU">
+      <button onclick="simulateScan()">Enter (จำลองการสแกน)</button>
+    </div>
+
+    <!-- Simulation of the Info Panel -->
+    <div class="info-panel">
+      <div class="info-row">
+        <b>หมายเลขติดตาม:</b> <span class="tackingNo" id="mock-tracking">-</span>
+      </div>
+      <div class="info-row">
+        <b>โลจิสติกส์:</b> โลจิสติกส์ <span id="mock-logistics">-</span>
+      </div>
+    </div>
+
+    <!-- Simulation of the Clear Button -->
+    <div class="actions">
+      <button class="clear-btn" onclick="clearData()">ล้างข้อมูล & สแกนถัดไป</button>
+    </div>
+
+  </div>
+
+  <div class="mock-controls">
+    <b>เครื่องมือจำลอง (Mock Tools):</b>
+    <p>เมื่อคุณพิมพ์ Tracking No ลงในช่องสแกนแล้วกด Enter หน้าเว็บจะอัปเดตข้อมูล Tracking และ Logistics โดยอัตโนมัติ (คล้ายพฤติกรรมจริงของ BigSeller)</p>
+  </div>
+
+  <script>
+    // Simulate BigSeller behavior
+    function simulateScan() {
+      const inputVal = document.getElementById('mock-scan-input').value.trim();
+      if (inputVal) {
+        document.getElementById('mock-tracking').textContent = inputVal;
+        const couriers = ['Shopee Express', 'J&T Express', 'Kerry', 'Flash Express', 'Ninja Van'];
+        const randomCourier = couriers[Math.floor(Math.random() * couriers.length)];
+        document.getElementById('mock-logistics').textContent = randomCourier;
+        
+        // Dispatch Enter key event to trigger extension hook
+        const event = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true
+        });
+        document.getElementById('mock-scan-input').dispatchEvent(event);
+      }
+    }
+    
+    function clearData() {
+      document.getElementById('mock-tracking').textContent = '-';
+      document.getElementById('mock-logistics').textContent = '-';
+      document.getElementById('mock-scan-input').value = '';
+      document.getElementById('mock-scan-input').focus();
+    }
+    
+    // Add event listener to input to trigger simulateScan on Enter key
+    document.getElementById('mock-scan-input').addEventListener('keydown', function(e) {
+      // Only do our own manual updating if this is a real user keypress (isTrusted)
+      // We don't want to infinite loop when we dispatch the fake event above
+      if (e.key === 'Enter' && e.isTrusted) {
+        simulateScan();
+      }
+    });
+  </script>
+</body>
+</html>
