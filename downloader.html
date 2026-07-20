@@ -263,10 +263,10 @@
         </div>
 
         <!-- Search Order -->
-        <div style="font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; font-weight: 600;">ค้นหาด้วย Order</div>
+        <div style="font-size: 0.85rem; color: var(--text2); margin-bottom: 0.5rem; font-weight: 600;">ค้นหาด้วย เลขแทร็คกิ้ง หรือ เลขคำสั่งซื้อ</div>
         <div class="search-group" style="margin-bottom: 1.5rem;">
             <input id="order-input" type="text"
-                placeholder="ใส่เลข Order (เช่น 250620-123456)"
+                placeholder="เลขแทร็คกิ้ง หรือ เลขคำสั่งซื้อ (เช่น 66857219654991)"
                 onkeydown="if(event.key==='Enter') startDownload()">
             <button id="search-btn" class="btn" onclick="startDownload()">🔍 ค้นหา</button>
         </div>
@@ -457,7 +457,7 @@ function setConvProgress(pct) {
 // ============================================================
 async function startDownload() {
     const orderNo = document.getElementById('order-input').value.trim();
-    if (!orderNo) { alert('กรุณาใส่เลข Order ครับ'); return; }
+    if (!orderNo) { alert('กรุณาใส่เลขแทร็คกิ้ง หรือ เลขคำสั่งซื้อ ก่อนครับ'); return; }
     if (isBusy) return;
 
     if (!accessToken) {
@@ -487,7 +487,7 @@ async function startDownload() {
         setStep('step-search', 'active', `กำลังค้นหาไฟล์ที่มี "${orderNo}" บน Google Drive...`);
         const file = await searchDriveForOrder(orderNo);
         if (!file) {
-            setStep('step-search', 'error', `❌ ไม่พบไฟล์ที่มี Order "${orderNo}" บน Drive`);
+            setStep('step-search', 'error', `❌ ไม่พบไฟล์วิดีโอที่มี "${orderNo}" อยู่บน Drive (ลองตรวจว่าใช้เลขแทร็คกิ้งหรือเลขคำสั่งซื้อถูกต้อง)`);
             throw new Error('File not found');
         }
         setStep('step-search', 'done', `พบไฟล์: ${file.name} (${formatBytes(file.size)})`);
