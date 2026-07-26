@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 Packing Recorder Lite (v0.5.1)</title>
+    <title>📦 Packing Recorder (v0.6.0)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -69,6 +69,8 @@
         .camera-box {
             position: relative;
             width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
             aspect-ratio: 16/9;
             background: #000;
             border-radius: 12px;
@@ -153,6 +155,54 @@
         }
         input:disabled { opacity: .5; cursor: not-allowed; }
 
+        /* Marketplace Selector */
+        .marketplace-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 0.5rem;
+            justify-content: center;
+        }
+        .mp-option {
+            flex: 1;
+            max-width: 120px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            background: var(--surface2);
+            position: relative;
+        }
+        .mp-option img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .mp-option:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        .mp-option.selected {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+        .mp-option.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: var(--accent);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
         .btn-row { display: flex; gap: 0.75rem; }
         .btn {
             flex: 1;
@@ -189,18 +239,27 @@
         }
         .btn-google:hover { background: #f8f9fa; }
 
-        /* Upload Status */
         .upload-box {
             display: flex; align-items: center; gap: 0.75rem;
             padding: 0.85rem 1rem;
             border-radius: 8px;
             font-weight: 500;
             font-size: 0.9rem;
+            position: relative;
+            overflow: hidden;
         }
         .upload-box.hidden { display: none; }
         .upload-box.uploading { background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2); color: var(--accent); }
         .upload-box.success { background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.2); color: var(--success); }
         .upload-box.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.2); color: var(--danger); }
+        .upload-progress-bar {
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 4px;
+            background-color: var(--accent);
+            width: 0%;
+            transition: width 0.3s linear;
+        }
         .spinner {
             width: 18px; height: 18px; flex-shrink: 0;
             border: 2.5px solid rgba(59,130,246,.3);
@@ -294,7 +353,7 @@
 
 <!-- ===== HEADER ===== -->
 <header class="header">
-    <div class="logo">📦    Packing Recorder Lite — v0.5.1 &nbsp;|&nbsp;</div>
+    <div class="logo">📦    Packing Recorder — v0.6.0 &nbsp;|&nbsp;</div>
     <div class="header-right">
         <span id="auth-badge" class="badge badge-warn">⚪ Not Signed In</span>
         <button id="sign-in-btn" class="btn-sm btn-google" onclick="doSignIn()">🔑 Sign In with Google</button>
@@ -324,6 +383,13 @@
 
         <!-- Controls -->
         <div class="controls">
+            <!-- Marketplace Selector -->
+            <div class="marketplace-selector" id="mp-selector">
+                <div class="mp-option" data-type="return"><img src="logo/return.jpg" alt="Return"></div>
+                <div class="mp-option" data-type="thaimart"><img src="logo/thaimart.jpg" alt="Thaimart"></div>
+                <div class="mp-option" data-type="shopchill"><img src="logo/shopchill.jpg" alt="Shopchill"></div>
+            </div>
+
             <div class="field">
                 <label>Order Number</label>
                 <input id="order-input" type="text"
@@ -406,6 +472,7 @@ let isRecording = false;
 let startTime = null;
 let durationTimer = null;
 let currentOrderNo = '';
+let selectedMarketplace = null; // เก็บค่า marketplace ที่ถูกเลือก
 
 // ============================================================
 //  INDEXEDDB
@@ -617,15 +684,41 @@ const placeholder = document.getElementById('cam-placeholder');
 const recIndicator = document.getElementById('rec-indicator');
 const durationEl = document.getElementById('duration');
 
-orderInput.addEventListener('input', () => {
-    startBtn.disabled = orderInput.value.trim() === '' || isRecording;
+// Marketplace Selection Logic
+const mpOptions = document.querySelectorAll('.mp-option');
+mpOptions.forEach(opt => {
+    opt.addEventListener('click', () => {
+        mpOptions.forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        selectedMarketplace = opt.dataset.type;
+        orderInput.focus();
+    });
 });
 
+// Enforce selection before scanning
 orderInput.addEventListener('keydown', e => {
+    // Check if marketplace is selected before typing
+    if (!selectedMarketplace && e.key !== 'Tab') {
+        e.preventDefault();
+        alert('กรุณาเลือกรูปแบบงานแพ็คสินค้า (โลโก้) ก่อนสแกนหรือพิมพ์เลขคำสั่งซื้อครับ');
+        orderInput.blur();
+        return;
+    }
+
     if (e.key === 'Enter' && orderInput.value.trim() && !isRecording) {
         e.preventDefault();
         startRecording();
     }
+});
+
+orderInput.addEventListener('input', () => {
+    if (!selectedMarketplace) {
+        orderInput.value = '';
+        alert('กรุณาเลือกรูปแบบงานแพ็คสินค้า (โลโก้) ก่อนสแกนหรือพิมพ์เลขคำสั่งซื้อครับ');
+        orderInput.blur();
+        return;
+    }
+    startBtn.disabled = orderInput.value.trim() === '' || isRecording;
 });
 
 async function startRecording() {
@@ -718,7 +811,9 @@ async function finalize(orderNo) {
     const fileExt = isMP4 ? 'mp4' : 'webm';
     const blobType = isMP4 ? 'video/mp4' : 'video/webm';
 
-    const fileName = `return_${yyyy}_${mm}_${dd}_${safeOrder}.${fileExt}`;
+    // Use selected marketplace as prefix
+    const prefix = selectedMarketplace || 'unknown';
+    const fileName = `${prefix}_${yyyy}_${mm}_${dd}_${safeOrder}.${fileExt}`;
     const blob = new Blob(recordedChunks, { type: blobType });
 
     // Save to DB first
@@ -761,13 +856,17 @@ async function finalize(orderNo) {
     await renderHistory();
 }
 
-function showUpload(type, msg) {
+function showUpload(type, msg, percent = 0) {
     const box = document.getElementById('upload-box');
     box.className = 'upload-box ' + type;
     if (type === 'uploading') {
-        box.innerHTML = `<div class="spinner"></div><span>${msg}</span>`;
+        box.innerHTML = `
+            <div class="upload-progress-bar" style="width: ${percent}%;"></div>
+            <div class="spinner" style="position: relative; z-index: 2;"></div>
+            <span style="position: relative; z-index: 2;">${msg}</span>
+        `;
     } else {
-        box.innerHTML = `<span>${msg}</span>`;
+        box.innerHTML = `<span style="position: relative; z-index: 2;">${msg}</span>`;
     }
 }
 
@@ -812,20 +911,40 @@ async function ensureDateFolders(yyyy, mm, dd) {
 }
 
 async function uploadToDrive(blob, fileName, folderId) {
-    const meta = { name: fileName, parents: [folderId], mimeType: blob.type };
-    const form = new FormData();
-    form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
-    form.append('file', blob);
+    return new Promise((resolve, reject) => {
+        const meta = { name: fileName, parents: [folderId], mimeType: blob.type };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+        form.append('file', blob);
 
-    const resp = await fetch(
-        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true',
-        { method: 'POST', headers: { Authorization: 'Bearer ' + accessToken }, body: form }
-    );
-    if (!resp.ok) {
-        const err = await resp.json();
-        throw new Error(err.error?.message || resp.statusText);
-    }
-    return await resp.json();
+        const uploadUrl = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink&supportsAllDrives=true';
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', uploadUrl, true);
+        xhr.setRequestHeader('Authorization', 'Bearer ' + accessToken);
+
+        xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                showUpload('uploading', `⏫ กำลังอัปโหลด ${fileName} (${percent}%)`, percent);
+            }
+        };
+
+        xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+                try {
+                    const resp = JSON.parse(xhr.responseText);
+                    resolve(resp);
+                } catch (e) {
+                    reject(e);
+                }
+            } else {
+                reject(new Error(`Upload error: ${xhr.statusText}`));
+            }
+        };
+
+        xhr.onerror = () => reject(new Error('Network Error'));
+        xhr.send(form);
+    });
 }
 
 // ============================================================
