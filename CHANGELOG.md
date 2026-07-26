@@ -9,20 +9,6 @@
 - **Real-time Upload Progress**: เปลี่ยนกระบวนการอัปโหลดวิดีโอจาก `fetch` เป็น `XMLHttpRequest` (XHR) ทำให้แสดงหลอด Progress Bar พร้อมเปอร์เซ็นต์แบบ Real-time ระหว่างรออัปโหลด
 - **UI Optimization**: ปรับลดขนาดหน้าจอพรีวิวกล้อง (`max-width: 650px`) และจัดกึ่งกลางหน้าจอเพื่อให้พนักงานมองเห็นปุ่มกดตัวเลือก Marketplace ได้ชัดเจนขึ้น
 
-## [v2.1.0] - 2026-07-22 (Major Extension & Video System Upgrade)
-### Added
-- **Logistics-Based Recording Trigger**: เปลี่ยนเงื่อนไขการเริ่มอัดวิดีโออัตโนมัติมาตรวจจับค่าขนส่งจาก `<span class="shipMethod">` แทนแทร็คกิ้งเดิม รองรับการแพ็คออเดอร์ที่ไม่มี Tracking Number (`--`)
-- **Live Camera Standby Preview**: วาดภาพสดจากกล้องลง Canvas ตลอดเวลาแม้อยู่ในโหมดสแตนด์บาย พร้อมแสดงป้าย "🟢 กล้องพร้อมใช้งาน" แก้ไขปัญหากล้องแสดงเป็นจอดำ ("กล้องไม่ขึ้น")
-- **Flexible Camera Fallback & Auto-Recovery**: เพิ่มระบบลองกล้องแบบยืดหยุ่น ป้องกันปัญหา `OverconstrainedError` เมื่อสลับสาย USB กล้อง พร้อมเพิ่มปุ่ม "🔄 ลองเชื่อมต่อกล้องใหม่" และดักจับสายกล้องหลุด (`track.onended`)
-- **Anti-Chrome Energy Saver (15 FPS Dual-Ticker Engine)**: เพิ่ม `setInterval` Ticker ทำงานควบคู่กับ `requestAnimationFrame` เพื่อรักษาความต่อเนื่องของภาพวิดีโอ 15 FPS แม้ Chrome จะเปิดโหมดประหยัดพลังงานหรือสลับแท็บไปหน้าอื่น
-- **Scan Lock & Focus Intercept**: เพิ่มระบบบล็อกช่องป้อนข้อมูลและย้าย Focus ออกจากช่องสแกนเมื่อ Pop-up "สแกนครบแล้ว!" แสดงขึ้น เพื่อป้องกันเครื่องสแกนเนอร์ยิงบาร์โค้ดเข้ามาแทรกหรือเริ่มอัดวิดีโอซ้ำโดยไม่ตั้งใจ
-- **Auto-Login Validation on Boot**: ตรวจสอบสิทธิ์ Google OAuth Token อัตโนมัติทุกครั้งที่เข้าหน้า BigSeller หากพบว่าเซสชันหมดอายุ (HTTP 401) จะขึ้นเตือนและล้างค่าเซสชันเก่าทันที
-- **One-Click Login Prompt Overlay**: เพิ่มปุ่ม "🔑 คลิกที่นี่เพื่อลงชื่อเข้าใช้ Google Drive" บนหน้าต่างแจ้งเตือนกลางจอ ช่วยให้พนักงานกดลงชื่อเข้าใช้ได้ทันทีโดยไม่ต้องงมหาไอคอนบนแถบ Chrome
-
-### Changed
-- **Crisp Popup Visibility**: ยกเลิกเอฟเฟกต์เบลอหน้าจอ (`backdrop-filter: blur`) บน Pop-up ทำให้ภาพพรีวิวกล้องและบรรยากาศการแพ็คคมชัดใสปิ๊งตลอดเวลา
-- **Restored Packing Workflow**: ปรับปุ่ม "รับทราบ" บน Pop-up ให้ทำหน้าที่ปิด Pop-up และปลดล็อค Scan Lock เท่านั้น (วิดีโอยังคงอัดต่อเนื่องเพื่อเก็บภาพการปิดกล่อง) โดยวิดีโอจะสั่งหยุดอัดและอัปโหลดขึ้น Google Shared Drive เมื่อกดปุ่ม **"ล้างข้อมูล & สแกนถัดไป"** บน BigSeller เท่านั้น
-
 ## [v0.5.1] - 2026-06-21
 ### Fixed
 - **Shared Drive Support**: เพิ่มพารามิเตอร์ `corpora=allDrives`, `includeItemsFromAllDrives=true` และ `supportsAllDrives=true` ในการเชื่อมต่อ Google Drive API ทั้งใน `index.html` และ `downloader.html` เพื่อแก้ปัญหาการค้นหาวิดีโอไม่พบบน Shared Drive ของอีเมลบัญชีอื่น (เช่น `natnicha.rs1944@gmail.com`)

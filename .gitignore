@@ -5,8 +5,12 @@
 .Spotlight-V100
 .Trashes
 
-# Extension Code (Personal Use Only)
+# Extension & Personal Files
 extension/
+*.zip
+README_EXTENSION.md
+mock_bigseller.html
+generate_icons.py
 
 # Old modular source files (not used — everything is now in index.html)
 src/
