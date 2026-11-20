@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📦 Packing Recorder (v0.6.0)</title>
+    <title>📦 Packing Recorder (v0.7.0)</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -306,6 +306,7 @@
         .hist-badge.success { background: rgba(16,185,129,.2); color: var(--success); }
         .hist-badge.uploading { background: rgba(59,130,246,.2); color: var(--accent); }
         .hist-badge.failed { background: rgba(239,68,68,.2); color: var(--danger); }
+        .hist-badge.pending { background: rgba(245,158,11,.2); color: var(--warning); }
         .hist-meta { font-size: 0.78rem; color: var(--text2); margin-bottom: 0.5rem; }
         .hist-link { font-size: 0.8rem; color: var(--accent); text-decoration: none; font-weight: 600; }
         .hist-link:hover { text-decoration: underline; }
@@ -353,7 +354,7 @@
 
 <!-- ===== HEADER ===== -->
 <header class="header">
-    <div class="logo">📦    Packing Recorder — v0.6.0 &nbsp;|&nbsp;</div>
+    <div class="logo">📦    Packing Recorder — v0.7.0 &nbsp;|&nbsp;</div>
     <div class="header-right">
         <span id="auth-badge" class="badge badge-warn">⚪ Not Signed In</span>
         <button id="sign-in-btn" class="btn-sm btn-google" onclick="doSignIn()">🔑 Sign In with Google</button>
@@ -473,6 +474,13 @@ let startTime = null;
 let durationTimer = null;
 let currentOrderNo = '';
 let selectedMarketplace = null; // เก็บค่า marketplace ที่ถูกเลือก
+let tokenExpiresAt = 0;          // เวลาที่ access token จะหมดอายุ (ms)
+let tokenWaiters = [];           // promise ที่รอผลการขอ token
+let tokenRefreshPromise = null;  // การต่ออายุที่กำลังทำอยู่ (finalize จะรอให้เสร็จก่อนอัปโหลด)
+let pendingUploads = [];         // วิดีโอที่รออัปโหลด เพราะไม่มี token / token หมดอายุ
+let isFlushing = false;
+
+const TOKEN_REFRESH_BEFORE_MS = 10 * 60 * 1000; // ต่ออายุเมื่อเหลือน้อยกว่า 10 นาที
 
 // ============================================================
 //  INDEXEDDB
@@ -571,16 +579,76 @@ async function initAuth() {
         callback: resp => {
             if (resp.error) {
                 console.error('Auth error:', resp);
-                setAuthUI(false);
+                if (!isTokenValid()) setAuthUI(false);
+                resolveTokenWaiters(false);
                 return;
             }
             accessToken = resp.access_token;
+            tokenExpiresAt = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
             setAuthUI(true);
+            resolveTokenWaiters(true);
+            flushPendingUploads(); // อัปโหลดวิดีโอที่ค้างไว้ (ถ้ามี)
+        },
+        // ป๊อปอัปถูกบล็อก / ผู้ใช้ปิดหน้าต่าง
+        error_callback: err => {
+            console.warn('Auth popup error:', err);
+            resolveTokenWaiters(false);
         }
     });
 
     // Try silent login first (works if user already consented)
-    tokenClient.requestAccessToken({ prompt: '' });
+    requestToken('');
+
+    // เฝ้าดูอายุ token: หมดแล้วให้ป้ายเปลี่ยนสถานะทันที
+    // (การสแกนครั้งถัดไปจะขอ token ใหม่ให้อัตโนมัติ)
+    setInterval(() => {
+        if (accessToken && !isTokenValid()) {
+            accessToken = null;
+            setAuthUI(false, true);
+        }
+    }, 30 * 1000);
+}
+
+// ------------------------------------------------------------
+//  TOKEN AUTO-REFRESH
+//  Google ให้ access token อายุ 1 ชั่วโมง และเบราว์เซอร์จะบล็อกป๊อปอัป
+//  ที่ไม่ได้เกิดจากการกด/สแกนของผู้ใช้ จึงต่ออายุตอนพนักงาน "ยิงบาร์โค้ด"
+//  และตอน "กดหยุดบันทึก" (prompt: '' = ไม่ถามซ้ำ หน้าต่างจะเด้งแล้วปิดเอง)
+// ------------------------------------------------------------
+function isTokenValid() {
+    return !!accessToken && Date.now() < tokenExpiresAt;
+}
+
+function isTokenFresh() {
+    return !!accessToken && tokenExpiresAt - Date.now() > TOKEN_REFRESH_BEFORE_MS;
+}
+
+function resolveTokenWaiters(ok) {
+    const waiters = tokenWaiters;
+    tokenWaiters = [];
+    waiters.forEach(w => w(ok));
+}
+
+function requestToken(prompt) {
+    return new Promise(resolve => {
+        if (!tokenClient) { resolve(false); return; }
+        tokenWaiters.push(resolve);
+        // กันค้าง: ถ้าไม่มีผลกลับมาภายใน 2 นาที ถือว่าไม่สำเร็จ
+        setTimeout(() => {
+            const i = tokenWaiters.indexOf(resolve);
+            if (i >= 0) { tokenWaiters.splice(i, 1); resolve(false); }
+        }, 2 * 60 * 1000);
+        if (tokenWaiters.length === 1) tokenClient.requestAccessToken({ prompt });
+    });
+}
+
+// ต้องเรียกแบบ synchronous ภายใน event ของผู้ใช้ (keydown/click) เพื่อไม่ให้ป๊อปอัปโดนบล็อก
+function refreshTokenIfNeeded() {
+    if (isTokenFresh() || !tokenClient) return Promise.resolve(isTokenValid());
+    if (!tokenRefreshPromise) {
+        tokenRefreshPromise = requestToken('').finally(() => { tokenRefreshPromise = null; });
+    }
+    return tokenRefreshPromise;
 }
 
 function doSignIn() {
@@ -588,10 +656,11 @@ function doSignIn() {
         alert('ระบบยังโหลดไม่เสร็จ กรุณารอสักครู่แล้วลองใหม่ครับ');
         return;
     }
+    // เรียกตรงเสมอ (ไม่รอคิว) เพื่อให้หน้าต่างเลือกบัญชีเปิดทันที ผลจะไปที่ callback เดียวกัน
     tokenClient.requestAccessToken({ prompt: 'select_account' });
 }
 
-function setAuthUI(ok) {
+function setAuthUI(ok, expired = false) {
     const badge = document.getElementById('auth-badge');
     const btn = document.getElementById('sign-in-btn');
     if (ok) {
@@ -599,7 +668,7 @@ function setAuthUI(ok) {
         badge.className = 'badge badge-ok';
         btn.style.display = 'none';
     } else {
-        badge.textContent = '⚪ Not Signed In';
+        badge.textContent = expired ? '🟠 Session หมดอายุ (สแกนครั้งถัดไปจะต่ออายุให้)' : '⚪ Not Signed In';
         badge.className = 'badge badge-warn';
         btn.style.display = '';
     }
@@ -725,6 +794,9 @@ async function startRecording() {
     const orderNo = orderInput.value.trim();
     if (!orderNo || isRecording) return;
 
+    // ต่ออายุ token ตอนนี้เลย (อยู่ใน event ยิงบาร์โค้ด/กดปุ่ม ป๊อปอัปจะไม่โดนบล็อก) ไม่ต้องรอ
+    refreshTokenIfNeeded();
+
     currentOrderNo = orderNo;
     startBtn.disabled = true;
     orderInput.disabled = true;
@@ -776,6 +848,8 @@ function updateDuration() {
 
 function stopRecording() {
     if (!mediaRecorder || !isRecording) return;
+    // เผื่ออัดนานจน token ใกล้หมด → ต่ออายุตอนกดหยุด ก่อนเริ่มอัปโหลด
+    refreshTokenIfNeeded();
     mediaRecorder.stop();
     isRecording = false;
     clearInterval(durationTimer);
@@ -829,14 +903,26 @@ async function finalize(orderNo) {
 
     showUpload('uploading', `⏫ กำลังอัปโหลด ${fileName}...`);
 
-    if (!accessToken) {
-        await dbUpdate(recId, { status: 'FAILED' });
-        showUpload('error', '❌ Upload ล้มเหลว — กรุณา Sign In with Google ก่อนครับ');
-        orderInput.disabled = false;
+    // รอการต่ออายุ token ที่สั่งไว้ตอนกดหยุด (ถ้ามี) ให้เสร็จก่อน
+    if (tokenRefreshPromise) await tokenRefreshPromise;
+
+    const result = await uploadRecord({ blob, fileName, recId, yyyy, mm, dd });
+    if (result !== 'failed') { // สำเร็จ หรือเข้าคิวรออัปโหลดแล้ว → พร้อมสแกนออเดอร์ถัดไป
         orderInput.value = '';
         startBtn.disabled = true;
-        await renderHistory();
-        return;
+    }
+    orderInput.disabled = false;
+    await renderHistory();
+}
+
+// อัปโหลด 1 วิดีโอ — ถ้าไม่มี token หรือเจอ 401 จะเก็บไว้ในคิว
+// แล้วอัปโหลดให้อัตโนมัติทันทีที่ได้ token ใหม่ (สแกนครั้งถัดไป หรือกด Sign In)
+async function uploadRecord(item) {
+    const { blob, fileName, recId, yyyy, mm, dd } = item;
+
+    if (!isTokenValid()) {
+        queuePendingUpload(item);
+        return 'queued';
     }
 
     try {
@@ -844,17 +930,53 @@ async function finalize(orderNo) {
         const result = await uploadToDrive(blob, fileName, folderId);
         await dbUpdate(recId, { status: 'SUCCESS', drive_file_id: result.id, drive_url: result.webViewLink });
         showUpload('success', `✅ Upload สำเร็จ! ${fileName}`);
-        orderInput.value = '';
-        startBtn.disabled = true;
+        return 'ok';
     } catch (err) {
         console.error('Upload error:', err);
+        if (String(err.message).includes('AuthExpired')) {
+            accessToken = null;
+            tokenExpiresAt = 0;
+            setAuthUI(false, true);
+            queuePendingUpload(item);
+            return 'queued';
+        }
         await dbUpdate(recId, { status: 'FAILED' });
         showUpload('error', '❌ Upload ล้มเหลว — ' + err.message);
+        return 'failed';
     }
-
-    orderInput.disabled = false;
-    await renderHistory();
 }
+
+function queuePendingUpload(item) {
+    if (!pendingUploads.includes(item)) pendingUploads.push(item);
+    dbUpdate(item.recId, { status: 'PENDING' }).then(() => renderHistory());
+    showUpload('error', `⏳ Session หมดอายุ — เก็บวิดีโอไว้แล้ว ${pendingUploads.length} รายการ จะอัปโหลดให้อัตโนมัติเมื่อสแกนออเดอร์ถัดไป (หรือกด Sign In) ห้ามปิดหน้านี้`);
+}
+
+async function flushPendingUploads() {
+    if (isFlushing || pendingUploads.length === 0) return;
+    isFlushing = true;
+    try {
+        while (pendingUploads.length > 0 && isTokenValid()) {
+            const item = pendingUploads.shift();
+            await dbUpdate(item.recId, { status: 'UPLOADING' });
+            await renderHistory();
+            showUpload('uploading', `⏫ กำลังอัปโหลดวิดีโอที่ค้างไว้ ${item.fileName}...`);
+            const result = await uploadRecord(item);
+            if (result !== 'ok') break; // ถ้าล้มเหลวอีก uploadRecord จัดการคิว/สถานะให้แล้ว
+        }
+    } finally {
+        isFlushing = false;
+        await renderHistory();
+    }
+}
+
+// กันพนักงานปิดหน้าเว็บตอนยังมีวิดีโอค้างอัปโหลด
+window.addEventListener('beforeunload', e => {
+    if (isRecording || pendingUploads.length > 0 || isFlushing) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
 
 function showUpload(type, msg, percent = 0) {
     const box = document.getElementById('upload-box');
@@ -878,6 +1000,8 @@ async function driveQuery(q) {
         `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&spaces=drive&corpora=allDrives&includeItemsFromAllDrives=true&supportsAllDrives=true`,
         { headers: { Authorization: 'Bearer ' + accessToken } }
     );
+    if (resp.status === 401) throw new Error('AuthExpired');
+    if (!resp.ok) throw new Error(`Drive query error: HTTP ${resp.status}`);
     const data = await resp.json();
     return data.files || [];
 }
@@ -888,6 +1012,8 @@ async function createFolder(name, parentId) {
         headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] })
     });
+    if (resp.status === 401) throw new Error('AuthExpired');
+    if (!resp.ok) throw new Error(`Drive create folder error: HTTP ${resp.status}`);
     const data = await resp.json();
     return data.id;
 }
@@ -930,7 +1056,9 @@ async function uploadToDrive(blob, fileName, folderId) {
         };
 
         xhr.onload = () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
+            if (xhr.status === 401) {
+                reject(new Error('AuthExpired'));
+            } else if (xhr.status >= 200 && xhr.status < 300) {
                 try {
                     const resp = JSON.parse(xhr.responseText);
                     resolve(resp);
