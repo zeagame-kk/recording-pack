@@ -43,5 +43,21 @@ Web App สำหรับบันทึกวิดีโอตอนแพ็
 - **เสียง (Audio)**: ไม่บันทึกเสียง (Muted) เพื่อประหยัดพื้นที่จัดเก็บ
 - **ขนาดไฟล์โดยประมาณ**: นาทีละ ~15MB (วิดีโอ 3 นาทีจะใช้พื้นที่ประมาณ 45MB)
 
+## 📁 โครงสร้างโฟลเดอร์
+
+```
+recording_pack/
+├─ index.html          หน้าอัดวิดีโอ (GitHub Pages)
+├─ downloader.html     หน้าค้นหา/ดาวน์โหลดวิดีโอ (GitHub Pages)
+├─ logo/               โลโก้ marketplace ที่ index.html ใช้
+├─ README.md, CHANGELOG.md
+├─ extension/          ซอร์สโค้ด Chrome Extension (ไม่อยู่ใน git)
+├─ dist/               ไฟล์ zip สำหรับติดตั้ง Extension แต่ละเวอร์ชัน (ไม่อยู่ใน git)
+└─ dev/                เครื่องมือพัฒนา: mock_bigseller.html, generate_icons.py, คู่มือ Extension (ไม่อยู่ใน git)
+```
+
+> `index.html`, `downloader.html` และ `logo/` ต้องอยู่ที่ root เสมอ เพราะ GitHub Pages เสิร์ฟจากตรงนี้
+> รัน `python3 dev/generate_icons.py` จาก root ของโปรเจกต์ (สคริปต์เขียนไฟล์ไปที่ `extension/icons`)
+
 ---
 *พัฒนาเพื่อใช้งานในระบบบันทึกวิดีโอแพ็คสินค้าและสินค้าตีกลับของบริษัท*

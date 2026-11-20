@@ -5,15 +5,11 @@
 .Spotlight-V100
 .Trashes
 
-# Extension & Personal Files
+# Extension source, packaged zips, dev tools (เก็บในเครื่องเท่านั้น)
 extension/
+dist/
+dev/
 *.zip
-README_EXTENSION.md
-mock_bigseller.html
-generate_icons.py
-
-# Old modular source files (not used — everything is now in index.html)
-src/
 
 # Internal project report (not needed on GitHub)
 packing_recorder_lite_report.md
